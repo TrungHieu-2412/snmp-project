@@ -36,10 +36,11 @@ public class TrapReceiverService implements CommandResponder {
     @Autowired
     private SnmpPollerService pollerService; // Mượn dữ liệu CPU/RAM/PPS để ghi log
 
+    private List<Map<String, String>> alertHistory = new ArrayList<>();
     private List<Map<String, Object>> evaluationLogs = new ArrayList<>();
     private int logIdCounter = 1;
 
-    private List<Map<String, String>> alertHistory = new ArrayList<>();
+    private int mitigationDelay = 10; // Biến quản lý độ trễ tự động (mặc định 10s)
 
     @PostConstruct
     public void startListening() {
@@ -77,6 +78,7 @@ public class TrapReceiverService implements CommandResponder {
                     // Nếu nội dung chứa đúng "Mật mã" bị tấn công
                     if (value.contains("SYN_FLOOD_DETECTED")) {
                         String targetIp = peerAddress.split("/")[0];
+                        int currentDelay = this.mitigationDelay;
 
                         // Tạo log đánh giá hệ thống
                         Map<String, Object> log = new ConcurrentHashMap<>();
@@ -91,7 +93,9 @@ public class TrapReceiverService implements CommandResponder {
                         Map<String, String> alert = new ConcurrentHashMap<>();
                         alert.put("time", String.valueOf(System.currentTimeMillis()));
                         alert.put("ip", targetIp);
+                        alert.put("attackType", "TCP SYN Flood");
                         alert.put("message", "SYN Flood attack is occurred!");
+
                         alertHistory.add(alert);
 
                         logger.error("[VERIFICATION SYSTEM]: SYN Flood attack is occurred at {}!", targetIp);
@@ -114,7 +118,7 @@ public class TrapReceiverService implements CommandResponder {
                             log.put("maxTcp", currentMetrics.getOrDefault("tcp", "0"));
                             log.put("status", success ? "Đã chặn" : "Thất bại");
 
-                        }, CompletableFuture.delayedExecutor(10, TimeUnit.SECONDS)); // Đếm ngược 10s mới kích hoạt đánh chặn
+                        }, CompletableFuture.delayedExecutor(currentDelay, TimeUnit.SECONDS)); // Đếm ngược 10s mới kích hoạt đánh chặn
                     }
                 });
             }
@@ -166,6 +170,11 @@ public class TrapReceiverService implements CommandResponder {
             logger.error("❌ ERROR: ", e);
             return false;
         }
+    }
+
+    public void setMitigationDelay(int delay) {
+        this.mitigationDelay = delay;
+        logger.info("[*] Cấu hình hệ thống: Đã cập nhật thời gian trễ Auto-IPS thành {} giây", delay);
     }
 
     public List<Map<String, Object>> getEvaluationLogs() {
