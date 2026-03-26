@@ -1,74 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Tag } from 'antd';
 import { Download } from 'lucide-react';
-
-const logData = [
-  {
-    key: '1',
-    startTime: '10:00:15',
-    endTime: '10:00:45',
-    attackType: 'UDP Flood',
-    delay: '10s',
-    minBandwidth: '5 Mbps',
-    maxPps: '25,000',
-    maxCpu: '98%',
-    maxRam: '80%',
-    maxTcp: '45',
-    status: 'Đã chặn',
-  },
-  {
-    key: '2',
-    startTime: '09:30:00',
-    endTime: '09:30:15',
-    attackType: 'TCP SYN Flood',
-    delay: '0s',
-    minBandwidth: '85 Mbps',
-    maxPps: '1,200',
-    maxCpu: '30%',
-    maxRam: '55%',
-    maxTcp: '450', 
-    status: 'Đã chặn',
-  },
-  {
-    key: '3',
-    startTime: '08:15:20',
-    endTime: '08:16:00',
-    attackType: 'TCP ACK Flood',
-    delay: '30s',
-    minBandwidth: '2 Mbps',
-    maxPps: '35,000',
-    maxCpu: '100%',
-    maxRam: '95%',
-    maxTcp: '60',
-    status: 'Tê liệt',
-  },
-  {
-    key: '4', 
-    startTime: '07:45:00', 
-    endTime: '07:45:20', 
-    attackType: 'UDP Flood', 
-    delay: '0s', 
-    minBandwidth: '45 Mbps', 
-    maxPps: '18,000', 
-    maxCpu: '85%', 
-    maxRam: '70%', 
-    maxTcp: '30', 
-    status: 'Đã chặn',
-  },
-  {
-    key: '5', 
-    startTime: '06:10:00', 
-    endTime: '06:11:30', 
-    attackType: 'TCP SYN Flood', 
-    delay: '10s', 
-    minBandwidth: '60 Mbps', 
-    maxPps: '5,000', 
-    maxCpu: '60%', 
-    maxRam: '65%', 
-    maxTcp: '380', 
-    status: 'Đã chặn',
-  },
-];
+import { dashboardAPI } from '../lib/api';
 
 // Định nghĩa các cột hiển thị trên Web
 const columns = [
@@ -80,13 +13,6 @@ const columns = [
     key: 'attackType',
     width: 140,
     render: (text) => <span style={{ fontWeight: 'bold' }}>{text}</span>
-  },
-  { 
-    title: 'Độ trễ', 
-    dataIndex: 'delay', 
-    key: 'delay',
-    width: 70,
-    render: (text) => <Tag color="blue">{text}</Tag>
   },
   { title: 'Băng thông', dataIndex: 'minBandwidth', key: 'minBandwidth', width: 100, align: 'center' },
   { title: 'PPS', dataIndex: 'maxPps', key: 'maxPps', width: 80, align: 'center' },
@@ -107,6 +33,21 @@ const columns = [
 ];
 
 const EvaluationLogs = () => {
+  const [logData, setLogData] = useState([]);
+
+  // Fetch dữ liệu mỗi 3 giây
+  useEffect(() => {
+    const fetchLogs = async () => {
+      const data = await dashboardAPI.getEvaluationLogs();
+      // Đảo ngược mảng để log mới nhất hiện lên đầu bảng
+      setLogData(data.reverse()); 
+    };
+
+    fetchLogs(); // Gọi luôn lần đầu
+    const interval = setInterval(fetchLogs, 3000);
+    return () => clearInterval(interval);
+  }, []);
+  
   // Hàm xử lý xuất dữ liệu ra file CSV 
   const handleExportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 

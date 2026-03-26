@@ -1,10 +1,10 @@
 import React from 'react';
-import NetworkPerformance from './components/NetworkPerformance';
-import SystemResources from './components/SystemResources'; 
-import ControlPanel from './components/ControlPanel';
-import EvaluationLogs from './components/EvaluationLogs';
+import NetworkPerformance from '../components/NetworkPerformance';
+import SystemResources from '../components/SystemResources'; 
+import ControlPanel from '../components/ControlPanel';
+import EvaluationLogs from '../components/EvaluationLogs';
 
-function App() {
+const MainPage = () => {
   return (
     <div style={{ padding: '20px', backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       
@@ -28,18 +28,18 @@ function App() {
         {/* --- KHU VỰC 1: Network --- */}
         <NetworkPerformance />
 
-        {/* --- KHU VỰC 2: Tài nguyên (Đã lắp vào) --- */}
+        {/* --- KHU VỰC 2: Tài nguyên --- */}
         <SystemResources />
 
-        {/* --- KHU VỰC 3: Chờ thiết kế --- */}
+        {/* --- KHU VỰC 3: Điều khiển --- */}
         <ControlPanel />
 
-        {/* --- KHU VỰC 4: Chờ thiết kế --- */}
+        {/* --- KHU VỰC 4: Bảng Nhật ký --- */}
         <EvaluationLogs />
 
       </div>
     </div>
   );
-}
+};
 
-export default App;
+export default MainPage;
