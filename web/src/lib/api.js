@@ -1,5 +1,5 @@
 // src/lib/api.js
-const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://34.2.153.29:8080/api';
 
 export const dashboardAPI = {
   // 1. Lấy chỉ số CPU, RAM, Băng thông mới nhất
@@ -39,7 +39,7 @@ export const dashboardAPI = {
       return null;
     }
   },
-
+  // 4. Cập nhật thời gian trễ Auto-IPS
   updateDelayConfig: async (delaySeconds) => {
     try {
       const response = await fetch(`${API_BASE_URL}/config/delay?delay=${delaySeconds}`, {
@@ -52,7 +52,7 @@ export const dashboardAPI = {
     }
   },
 
-  // 4. Lấy dữ liệu cho bảng Evaluation Logs
+  // 5. Lấy dữ liệu cho bảng Evaluation Logs
   getEvaluationLogs: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/logs`);

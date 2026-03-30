@@ -1,4 +1,4 @@
-// TrapReceiverService.java: Module nhận thông tin (GET) các tài nguyên trong máy Agent
+
 package org.example;
 
 import org.slf4j.Logger;

@@ -72,7 +72,7 @@ const EvaluationLogs = () => {
     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '18px', color: '#1f2937', margin: 0 }}>
-          4. Bảng Nhật ký Đánh giá Hiệu năng
+          Nhật ký Đánh giá Hiệu năng (Performance Evaluation Logs)
         </h2>
         
         <Button type="primary" icon={<Download size={16} />} onClick={handleExportCSV}>

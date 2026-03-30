@@ -18,32 +18,37 @@ public class DashboardController {
     @Autowired
     private TrapReceiverService trapService;
 
-    // 1. API lấy số liệu CPU, RAM, Băng thông, PPS của máy Agent
     @GetMapping("/metrics")
     public ResponseEntity<Map<String, Object>> getMetrics() {
         return ResponseEntity.ok(pollerService.getLatestMetrics());
     }
 
-    // 2. API lấy danh sách cảnh báo
     @GetMapping("/alerts")
     public ResponseEntity<List<Map<String, String>>> getAlerts() {
         return ResponseEntity.ok(trapService.getAlertHistory());
     }
 
-    // 3. API kích hoạt Iptables để đánh chặn thủ công
-    @PostMapping("/mitigate")
+    // API kích hoạt Iptables THỦ CÔNG 
+    @PostMapping("/config/protect")
     public ResponseEntity<String> activateShield(@RequestParam String targetIp) {
-        boolean success = trapService.triggerMitigationSet(targetIp);
+        // Cần gọi đúng hàm triggerManualMitigation bên TrapService
+        boolean success = trapService.triggerManualMitigation(targetIp); 
+        
         if (success) {
-            return ResponseEntity.ok("Shield activated successfully on " + targetIp);
+            return ResponseEntity.ok("Manual shield activated and auto-task cancelled on " + targetIp);
         } else {
-            return ResponseEntity.status(500).body("Failed to activate shield!");
+            return ResponseEntity.status(500).body("Failed to activate manual shield!");
         }
     }
 
-    // 4. API lấy log của hệ thống Agent
     @GetMapping("/logs")
     public ResponseEntity<List<Map<String, Object>>> getEvaluationLogs() {
         return ResponseEntity.ok(trapService.getEvaluationLogs());
+    }
+
+    @PostMapping("/config/delay")
+    public ResponseEntity<String> updateDelayConfig(@RequestParam int delay) {
+        trapService.setMitigationDelay(delay);
+        return ResponseEntity.ok("Delay updated to " + delay + " seconds");
     }
 }
