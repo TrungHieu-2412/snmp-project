@@ -62,5 +62,18 @@ export const dashboardAPI = {
       console.error("API getEvaluationLogs error:", error);
       return [];
     }
+  },
+
+  // 5. Thêm IP mới vào hệ thống giám sát
+  addNewDevice: async (ip) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/device/add?ip=${ip}`, {
+        method: 'POST',
+      });
+      return response.ok;
+    } catch (error) {
+      console.error("API addNewDevice error:", error);
+      return false;
+    }
   }
 };

@@ -6,7 +6,7 @@ import {
 import { dashboardAPI } from '../lib/api';
 
 
-const SystemResources = () => {
+const SystemResources = ({ selectedIp }) => {
   // State lưu trữ mảng dữ liệu vẽ biểu đồ CPU/RAM
   const [resourceData, setResourceData] = useState([]);
   
@@ -16,8 +16,12 @@ const SystemResources = () => {
   useEffect(() => {
     // Hàm gọi API và cập nhật dữ liệu
     const fetchData = async () => {
+      if (!selectedIp) return; // Chưa chọn IP thì bỏ qua
+
       const data = await dashboardAPI.getMetrics();
-      if (data) {
+      if (data && data[selectedIp]) {
+        const deviceData = data[selectedIp]; // Chỉ lấy dữ liệu của IP được chọn
+
         // Lấy giờ hiện tại (HH:mm:ss)
         const timeString = new Date().toLocaleTimeString('vi-VN');
         
@@ -25,8 +29,8 @@ const SystemResources = () => {
         setResourceData(prevData => {
           const newDataPoint = {
             time: timeString,
-            cpu: data.cpu,
-            ram: data.ram
+            cpu: deviceData.cpu,
+            ram: deviceData.ram
           };
           
           // Giữ lại 15 điểm dữ liệu gần nhất để biểu đồ dịch chuyển trơn tru
@@ -35,7 +39,7 @@ const SystemResources = () => {
         });
 
         // 2. Cập nhật số kết nối TCP cho đồng hồ đo
-        setTcpConnections(data.tcp || 0); 
+        setTcpConnections(deviceData.tcp || 0); 
       }
     };
 
@@ -45,9 +49,9 @@ const SystemResources = () => {
     // Lập lịch gọi lại mỗi 5 giây
     const intervalId = setInterval(fetchData, 5000);
 
-    // Dọn dẹp interval khi component bị hủy
+    // Dọn dẹp interval khi component bị hủy hay khi selectedIp thay đổi
     return () => clearInterval(intervalId);
-  }, []);
+  }, [selectedIp]);
 
   const maxTcpScale = 200; // Thang đo tối đa của đồng hồ
   const gaugeData = [

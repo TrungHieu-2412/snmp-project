@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { dashboardAPI } from '../lib/api';
 
-const NetworkPerformance = () => {
+const NetworkPerformance = ({ selectedIp }) => {
   const [networkData, setNetworkData] = useState([]); // State lưu trữ mảng dữ liệu vẽ biểu đồ
   
   useEffect(() => {
     // Hàm gọi API và cập nhật dữ liệu
     const fetchData = async () => {
+      if (!selectedIp) return; // Chưa chọn IP thì bỏ qua
+
       const data = await dashboardAPI.getMetrics();
-      if (data) {
+      if (data && data[selectedIp]) {
+        const deviceData = data[selectedIp];
+
         // Lấy giờ hiện tại (HH:mm:ss)
         const timeString = new Date().toLocaleTimeString('vi-VN');
         
@@ -17,10 +21,10 @@ const NetworkPerformance = () => {
         setNetworkData(prevData => {
           const newDataPoint = {
             time: timeString,
-            bandwidthDown: Math.round((data.downKbps / 1024) * 100) / 100,
-            bandwidthUp: Math.round((data.upKbps / 1024) * 100) / 100,
-            ppsIn: data.inPps,
-            ppsOut: data.outPps
+            bandwidthDown: Math.round((deviceData.downKbps / 1024) * 100) / 100,
+            bandwidthUp: Math.round((deviceData.upKbps / 1024) * 100) / 100,
+            ppsIn: deviceData.inPps,
+            ppsOut: deviceData.outPps
           };
           
           // Giữ lại 15 điểm dữ liệu gần nhất để biểu đồ không bị tràn màn hình
@@ -38,7 +42,7 @@ const NetworkPerformance = () => {
 
     // Dọn dẹp interval khi component bị hủy
     return () => clearInterval(intervalId);
-  }, []);
+  }, [selectedIp]);
   
   return (
     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>

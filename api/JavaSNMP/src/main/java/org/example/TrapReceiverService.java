@@ -107,7 +107,7 @@ public class TrapReceiverService implements CommandResponder {
                             boolean success = triggerMitigationSet(targetIp);
 
                             // Lấy chỉ số hệ thống "đỉnh điểm" ngay lúc Iptables vừa được bật
-                            Map<String, Object> currentMetrics = pollerService.getLatestMetrics();
+                            Map<String, Object> currentMetrics = pollerService.getMetricsByIp(targetIp);
 
                             // Cập nhật lại các thông số vào log
                             log.put("endTime", new SimpleDateFormat("HH:mm:ss").format(new Date()));
