@@ -1,3 +1,4 @@
+// SnmpPollerService.java: Module sử dụng SNMP GET để quét dữ liệu định kỳ (Polling) và tính toán hiệu năng từ máy Agent.
 package org.example;
 
 import org.slf4j.Logger;
@@ -54,6 +55,8 @@ public class SnmpPollerService {
 
     private Snmp snmp;
 
+    // Khởi tạo dịch vụ SNMP, lắng nghe cổng UDP và tự động thêm 2 VM mặc định vào
+    // danh sách giám sát.
     @PostConstruct
     public void init() {
         try {
@@ -70,6 +73,7 @@ public class SnmpPollerService {
         }
     }
 
+    // Thêm IP mới vào danh sách cần giám sát (thông qua API hoặc tự động).
     public void addDevice(String ip) {
         if (!targetIps.contains(ip)) {
             targetIps.add(ip);
@@ -78,6 +82,8 @@ public class SnmpPollerService {
         }
     }
 
+    // Tự động được gọi ngầm mỗi 5 giây (Cronjob) để quét dữ liệu của toàn bộ các
+    // Agent hiện có.
     @Scheduled(fixedRate = 5000)
     public void pollAllMetrics() {
         for (String ip : targetIps) {
@@ -85,6 +91,8 @@ public class SnmpPollerService {
         }
     }
 
+    // Gửi SNMP GET yêu cầu trực tiếp tới 1 Agent để lấy CPU, RAM, Băng thông, TCP,
+    // v.v. và tính toán throughput.
     private void pollSingleVm(String ip) {
         try {
             Address targetAddress = GenericAddress.parse("udp:" + ip + "/" + SNMP_PORT);
@@ -178,8 +186,10 @@ public class SnmpPollerService {
                 metrics.put("sysName", sysName);
                 metrics.put("status", "ONLINE");
 
-                logger.info("[{}] OS: {} | CPU: {}% | RAM: {}% | Down: {} Kbps | In: {} pps | TCP: {}",
-                        ip, sysName, cpuUsage, String.format("%.1f", ramUsage), inKbps, inPps, tcpConns);
+                logger.info(
+                        "[{}] OS: {} | CPU: {}% | RAM: {}% | Down: {} Kbps | Up: {} Kbps | In: {} pps | Out: {} pps | TCP: {}",
+                        ip, sysName, cpuUsage, String.format("%.1f", ramUsage), inKbps, outKbps, inPps, outPps,
+                        tcpConns);
             } else {
                 metrics.put("status", "OFFLINE");
             }
@@ -190,6 +200,8 @@ public class SnmpPollerService {
         }
     }
 
+    // Trả về toàn bộ dữ liệu chỉ số (Metrics) đang lưu trong RAM để Controller
+    // (API) lấy xuống Frontend.
     public Map<String, Map<String, Object>> getAllMetrics() {
         return allMetrics;
     }

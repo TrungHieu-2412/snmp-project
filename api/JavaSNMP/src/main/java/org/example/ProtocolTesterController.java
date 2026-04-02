@@ -1,3 +1,4 @@
+// ProtocolTesterController.java: Benchmark so sánh hiệu năng SNMPv1, v2c, v3.
 package org.example;
 
 import org.snmp4j.CommunityTarget;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -27,7 +29,7 @@ import java.util.Map;
 @RequestMapping("/api/benchmark")
 @CrossOrigin(origins = "*")
 public class ProtocolTesterController {
-    private static final String VM1_IP = "10.0.1.2";
+
     private static final String COMMUNITY = "public";
     private static final String START_OID = "1.3.6.1.2.1.2.2.1.10";
 
@@ -35,8 +37,10 @@ public class ProtocolTesterController {
     private static final String V3_AUTH_PASS = "admin12345";
     private static final String V3_PRIV_PASS = "admin12345";
 
+    // Thực thi giả lập bài test gửi 50 gói tin liên tục để đo đạc và so sánh tốc độ
+    // sinh thái của 3 chuẩn SNMP (v1, v2c, v3).
     @GetMapping("/run")
-    public ResponseEntity<List<Map<String, Object>>> runBenchmark() {
+    public ResponseEntity<List<Map<String, Object>>> runBenchmark(@RequestParam("ip") String targetIp) {
         List<Map<String, Object>> results = new ArrayList<>();
 
         try {
@@ -51,7 +55,7 @@ public class ProtocolTesterController {
                             PrivAES128.ID, new OctetString(V3_PRIV_PASS)));
 
             transport.listen();
-            Address targetAddress = GenericAddress.parse("udp:" + VM1_IP + "/161");
+            Address targetAddress = GenericAddress.parse("udp:" + targetIp + "/161");
 
             CommunityTarget targetV1 = new CommunityTarget();
             targetV1.setCommunity(new OctetString(COMMUNITY));

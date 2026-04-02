@@ -1,4 +1,5 @@
-import React from 'react';
+// App.jsx: Root quản lý Bộ định tuyến (React Router) định nghĩa các đường dẫn URL cho dự án Frontend.
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './pages/MainLayout';
 import OverviewPage from './pages/OverviewPage';

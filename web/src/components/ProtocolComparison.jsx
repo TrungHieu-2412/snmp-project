@@ -1,22 +1,22 @@
-import React, { useState } from 'react';
+// ProtocolComparison.jsx: Vẽ 2 biểu đồ cột chạy Benchmark đọ sức độ trễ giữa SNMP v1, v2c và v3 trên cùng 1 Agent.
+import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { Button, Spin } from 'antd';
 import { Play } from 'lucide-react';
 import { dashboardAPI } from '../lib/api';
 
-const ProtocolComparison = () => {
+const ProtocolComparison = ({ selectedIp }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const handleRunBenchmark = async () => {
+    if (!selectedIp) return;
     setLoading(true);
-    // Gọi API chạy test thực tế trên BE
-    const result = await dashboardAPI.runProtocolBenchmark();
+    const result = await dashboardAPI.runProtocolBenchmark(selectedIp);
     setData(result);
     setLoading(false);
   };
 
-  // Màu sắc cho các cột
   const colors = ['#f87171', '#34d399', '#60a5fa']; 
 
   return (
@@ -24,10 +24,10 @@ const ProtocolComparison = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h2 style={{ fontSize: '18px', color: '#1f2937', margin: 0 }}>
-            Phân tích Kịch bản: So sánh Hiệu năng Giao thức SNMP (v1 vs v2c vs v3)
+            Scenario Analysis: SNMP Protocol Performance Comparison on {selectedIp || 'Not selected'}
           </h2>
           <p style={{ color: '#6b7280', fontSize: '13px', margin: '5px 0 0 0' }}>
-            Bài test yêu cầu lấy 50 thông số liên tiếp từ Agent (VM1). Đo lường Độ trễ (Latency) và Số lượng gói tin (Requests).
+            The test requires fetching 50 consecutive parameters from the selected Agent. Measuring Latency and Requests.
           </p>
         </div>
         
@@ -39,17 +39,16 @@ const ProtocolComparison = () => {
           size="large"
           style={{ backgroundColor: '#4f46e5' }}
         >
-          {loading ? 'Đang đo lường mạng...' : 'Chạy Benchmark'}
+          {loading ? 'Measuring network...' : 'Run Benchmark'}
         </Button>
       </div>
 
       {data.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '40px', marginTop: '30px' }}>
           
-          {/* Biểu đồ 1: Thời gian thực thi (Càng thấp càng tốt) */}
           <div>
             <h3 style={{ textAlign: 'center', fontSize: '15px', color: '#4b5563' }}>
-              ⏱️ Thời gian phản hồi (Milliseconds) - Càng thấp càng tốt
+              ⏱️ Response Time (Milliseconds) - Lower is better
             </h3>
             <div style={{ height: '300px' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -58,7 +57,7 @@ const ProtocolComparison = () => {
                   <XAxis dataKey="protocol" />
                   <YAxis />
                   <Tooltip cursor={{fill: '#f3f4f6'}} />
-                  <Bar dataKey="timeMs" name="Độ trễ (ms)" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="timeMs" name="Latency (ms)" radius={[4, 4, 0, 0]}>
                     {data.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={colors[index % 20]} />
                     ))}
@@ -67,14 +66,13 @@ const ProtocolComparison = () => {
               </ResponsiveContainer>
             </div>
             <p style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280', marginTop: '10px' }}>
-              *SNMPv1 chậm nhất do phải chờ phản hồi liên tục. SNMPv3 chậm hơn v2c do tốn thời gian giải mã AES.
+              *SNMPv1 is slowest due to waiting for sequential responses. SNMPv3 is slower than v2c due to AES decryption overhead.
             </p>
           </div>
 
-          {/* Biểu đồ 2: Số lượng Gói tin mạng (Càng thấp càng tốt) */}
           <div>
             <h3 style={{ textAlign: 'center', fontSize: '15px', color: '#4b5563' }}>
-              Số lượng Gói tin mạng (Requests) - Càng ít càng tiết kiệm
+              Network Packets (Requests) - Lower is better
             </h3>
             <div style={{ height: '300px' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -83,7 +81,7 @@ const ProtocolComparison = () => {
                   <XAxis dataKey="protocol" />
                   <YAxis />
                   <Tooltip cursor={{fill: '#f3f4f6'}} />
-                  <Bar dataKey="requests" name="Số gói tin GET" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="requests" name="GET Requests" radius={[4, 4, 0, 0]}>
                     {data.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={colors[index % 20]} />
                     ))}
@@ -92,14 +90,14 @@ const ProtocolComparison = () => {
               </ResponsiveContainer>
             </div>
             <p style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280', marginTop: '10px' }}>
-              *SNMPv1 dùng GETNEXT (50 lượt). SNMPv2c/v3 dùng GETBULK (gom vào 1 túi).
+              *SNMPv1 uses GETNEXT (50 turns). SNMPv2c/v3 uses GETBULK (grouped into 1 response).
             </p>
           </div>
 
         </div>
       ) : (
         <div style={{ height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
-          <span style={{ color: '#9ca3af' }}>Vui lòng bấm "Chạy Benchmark" để bắt đầu test mạng thực tế...</span>
+          <span style={{ color: '#9ca3af' }}>Please click "Run Benchmark" to start the real network test...</span>
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// TopHeader.jsx: Component thanh điều hướng trên cùng chứa Menu chọn Agent thả xuống, ô nhập thêm Agent mới, và 3 Tab chuyển trang
+import { useState } from 'react';
 import { Dropdown, Input, Button, message } from 'antd';
 import { dashboardAPI } from '../lib/api';
 import { Server, Activity, Share2, Plus, Zap, ChevronDown } from 'lucide-react';
@@ -11,14 +12,12 @@ const TopHeader = ({ ips, selectedIp, onAddIpSuccess }) => {
   const currentPath = location.pathname;
   const [, setSearchParams] = useSearchParams();
 
-  // Tạo giao diện mở trong Tab mới khi ấn chuột phải
   const menuItems = ips.map(agent => ({
     key: agent.ip,
     label: (
       <a 
         href={`?ip=${agent.ip}`} 
         onClick={(e) => {
-          // Chuột trái chạy React Router Push state thay thế href native
           if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
             e.preventDefault();
             setSearchParams({ ip: agent.ip });
@@ -33,23 +32,23 @@ const TopHeader = ({ ips, selectedIp, onAddIpSuccess }) => {
 
   const handleAddIp = async () => {
     if (!newIp.trim()) {
-      message.error("Vui lòng nhập định dạng IP hợp lệ!");
+      message.error("Please enter a valid IP address!");
       return;
     }
     setLoading(true);
     const success = await dashboardAPI.addNewDevice(newIp.trim());
     if (success) {
-      message.success(`Đã thêm IP ${newIp} vào hệ thống giám sát!`);
+      message.success(`Successfully added IP ${newIp} to the monitoring system!`);
       setNewIp("");
       if (onAddIpSuccess) onAddIpSuccess(newIp.trim());
     } else {
-      message.error("Thêm IP mới thất bại hoặc bị từ chối kết nối.");
+      message.error("Failed to add new IP or connection rejected.");
     }
     setLoading(false);
   };
 
   const selectedAgent = ips.find(a => a.ip === selectedIp);
-  const displayLabel = selectedAgent ? `${selectedAgent.ip} - ${selectedAgent.sysName}` : "Chọn VM Agent...";
+  const displayLabel = selectedAgent ? `${selectedAgent.ip} - ${selectedAgent.sysName}` : "Select VM Agent...";
 
   return (
     <div style={{ 
@@ -63,7 +62,6 @@ const TopHeader = ({ ips, selectedIp, onAddIpSuccess }) => {
       top: 0,
       zIndex: 1000
     }}>
-      {/* Khu vực bên trái: Chọn IP và Thêm IP */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         <h3 style={{ margin: 0, color: 'white', fontWeight: 600, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Server size={20} /> SNMP Manager
@@ -78,7 +76,7 @@ const TopHeader = ({ ips, selectedIp, onAddIpSuccess }) => {
 
         <div style={{ display: 'flex' }}>
           <Input 
-            placeholder="Nhập IP mới..." 
+            placeholder="Enter new IP..." 
             value={newIp} 
             onChange={(e) => setNewIp(e.target.value)}
             onPressEnter={handleAddIp}
@@ -90,12 +88,11 @@ const TopHeader = ({ ips, selectedIp, onAddIpSuccess }) => {
             loading={loading}
             style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, backgroundColor: '#3b82f6' }}
           >
-            <Plus size={16} /> Thêm
+            <Plus size={16} /> Add
           </Button>
         </div>
       </div>
 
-      {/* Khu vực bên phải: Điều hướng (Tabs) */}
       <div style={{ display: 'flex', gap: '10px' }}>
         <TabLink 
           to={`/${selectedIp ? `?ip=${selectedIp}` : ''}`} 
@@ -120,7 +117,6 @@ const TopHeader = ({ ips, selectedIp, onAddIpSuccess }) => {
   );
 };
 
-// Component con Nút bấm tuỳ chỉnh (Tab Header)
 const TabLink = ({ to, active, icon, label }) => {
   return (
     <Link to={to} style={{ textDecoration: 'none' }}>

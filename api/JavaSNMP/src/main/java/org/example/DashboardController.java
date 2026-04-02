@@ -1,3 +1,4 @@
+// DashboardController.java: Endpoint API điều khiển chính của BE
 package org.example;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,26 +19,30 @@ public class DashboardController {
     @Autowired
     private TrapReceiverService trapService;
 
-    // 1. API lấy số liệu CPU, RAM, Băng thông, PPS của máy Agent
+    // Cung cấp API GET để Frontend theo dõi tức thời hiệu năng (CPU, RAM, Tốc độ
+    // mạng) của các Agents.
     @GetMapping("/metrics")
     public ResponseEntity<Map<String, Map<String, Object>>> getAllMetrics() {
         return ResponseEntity.ok(pollerService.getAllMetrics());
     }
 
-    // API thêm thiết bị mới
+    // Cung cấp API POST cho phép Frontend thêm một Agent IP mới vào mạng lưới giám
+    // sát.
     @PostMapping("/device/add")
     public ResponseEntity<String> addNewDevice(@RequestParam String ip) {
         pollerService.addDevice(ip);
         return ResponseEntity.ok("The IP address " + ip + " has been added to the monitoring system!");
     }
 
-    // 2. API lấy danh sách cảnh báo
+    // Cung cấp API GET để hiển thị các thông báo (TRAP Alert) nếu máy Agent đang bị
+    // tấn công.
     @GetMapping("/alerts")
     public ResponseEntity<List<Map<String, String>>> getAlerts() {
         return ResponseEntity.ok(trapService.getAlertHistory());
     }
 
-    // 3. API kích hoạt Iptables để đánh chặn thủ công
+    // Cung cấp API POST điều khiển từ xa, ghi đè lệnh Iptables để chặn cuộc tấn
+    // công trên Agent mục tiêu.
     @PostMapping("/config/protect")
     public ResponseEntity<String> activateShield(@RequestParam String targetIp) {
         boolean success = trapService.triggerMitigationSet(targetIp);
@@ -48,16 +53,25 @@ public class DashboardController {
         }
     }
 
+    // Cung cấp API POST cập nhật thời gian trễ (để test hiệu năng chênh lệch khi bị
+    // tấn công).
     @PostMapping("/config/delay")
     public ResponseEntity<String> updateDelay(@RequestParam int delay) {
         trapService.setMitigationDelay(delay);
         return ResponseEntity.ok("Updated delay to " + delay + " seconds");
     }
 
-    // 4. API lấy log của hệ thống Agent
+    // Cung cấp API POST cấu hình chế độ bảo vệ (Tự động hoặc Thủ công)
+    @PostMapping("/config/auto-mode")
+    public ResponseEntity<String> updateAutoMode(@RequestParam boolean enabled) {
+        trapService.setAutoMode(enabled);
+        return ResponseEntity.ok("Updated Auto-IPS mode to " + (enabled ? "ON" : "OFF"));
+    }
+
+    // Cung cấp API GET trích xuất Nhật ký Đánh giá chứa các số liệu sau quá trình
+    // Anti-DDoS.
     @GetMapping("/logs")
     public ResponseEntity<List<Map<String, Object>>> getEvaluationLogs() {
         return ResponseEntity.ok(trapService.getEvaluationLogs());
     }
-
 }

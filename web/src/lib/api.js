@@ -1,24 +1,24 @@
-// src/lib/api.js
+// api.js: API kết nối với Backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api';
 
 export const dashboardAPI = {
-  // 1. Lấy chỉ số CPU, RAM, Băng thông mới nhất
+  // Lấy chỉ số CPU, RAM, Băng thông, PPS mới nhất của máy Agent
   getMetrics: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/metrics`);
-      if (!response.ok) throw new Error('Lỗi khi fetch metrics');
+      if (!response.ok) throw new Error('Error fetching metrics');
       return await response.json();
     } catch (error) {
       console.error("API getMetrics error:", error);
-      return null; // Trả về null nếu BE sập
+      return null;
     }
   },
 
-  // 2. Lấy danh sách lịch sử cảnh báo TRAP
+  // Gọi API lấy danh sách cảnh báo (gồm cả thời gian nhận TRAP và trạng thái kích hoạt khiên iptables)
   getAlerts: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/alerts`);
-      if (!response.ok) throw new Error('Lỗi khi fetch alerts');
+      if (!response.ok) throw new Error('Error fetching alerts');
       return await response.json();
     } catch (error) {
       console.error("API getAlerts error:", error);
@@ -26,13 +26,13 @@ export const dashboardAPI = {
     }
   },
 
-  // 3. Gửi lệnh kích hoạt Iptables thủ công
+  // Gửi lệnh thủ công để kích hoạt bảo vệ Iptables (thông qua lệnh SNMP SET)
   mitigateAttack: async (targetIp) => {
     try {
       const response = await fetch(`${API_BASE_URL}/config/protect?targetIp=${targetIp}`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Lỗi khi gửi lệnh mitigate');
+      if (!response.ok) throw new Error('Error sending mitigate command');
       return await response.text();
     } catch (error) {
       console.error("API mitigateAttack error:", error);
@@ -40,6 +40,7 @@ export const dashboardAPI = {
     }
   },
 
+  // Gửi cập nhật thông số thời gian trễ (delay) cho hệ thống Auto-IPS của backend
   updateDelayConfig: async (delaySeconds) => {
     try {
       const response = await fetch(`${API_BASE_URL}/config/delay?delay=${delaySeconds}`, {
@@ -52,11 +53,24 @@ export const dashboardAPI = {
     }
   },
 
-  // 4. Lấy dữ liệu cho bảng Evaluation Logs
+  // Đồng bộ trạng thái Bật/Tắt Auto-IPS xuống Backend
+  updateAutoModeConfig: async (enabled) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/config/auto-mode?enabled=${enabled}`, {
+        method: 'POST',
+      });
+      return response.ok;
+    } catch (error) {
+      console.error("API updateAutoModeConfig error:", error);
+      return false;
+    }
+  },
+
+  // Lấy toàn bộ lịch sử file log (Nhật ký đánh giá hiệu năng) xuất ra cho bảng EvaluationLogs
   getEvaluationLogs: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/logs`);
-      if (!response.ok) throw new Error('Lỗi khi fetch evaluation logs');
+      if (!response.ok) throw new Error('Error fetching evaluation logs');
       return await response.json();
     } catch (error) {
       console.error("API getEvaluationLogs error:", error);
@@ -64,7 +78,7 @@ export const dashboardAPI = {
     }
   },
 
-  // 5. Thêm IP mới vào hệ thống giám sát
+  // Thêm IP của Agent mới vào hệ thống backend để theo dõi
   addNewDevice: async (ip) => {
     try {
       const response = await fetch(`${API_BASE_URL}/device/add?ip=${ip}`, {
@@ -74,6 +88,18 @@ export const dashboardAPI = {
     } catch (error) {
       console.error("API addNewDevice error:", error);
       return false;
+    }
+  },
+
+  // Chạy bài Benchmark so sánh hiệu năng SNMPv1, v2c, v3 trên Agent
+  runProtocolBenchmark: async (ip) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/benchmark/run?ip=${ip}`);
+      if (!response.ok) throw new Error('Error checking benchmark');
+      return await response.json();
+    } catch (error) {
+      console.error("API runProtocolBenchmark error:", error);
+      return [];
     }
   }
 };
