@@ -31,7 +31,8 @@ public class TrapReceiverService implements CommandResponder {
     private static final String TRAP_LISTEN_ADDRESS = "0.0.0.0/10162"; // Cổng lắng nghe TRAP từ Agent bắn về
     private static final String RW_COMMUNITY = "private_admin"; // Mật khẩu có quyền SET cấu hình trên Agent
     private static final String SET_TARGET_PORT = "161"; // Cổng đích để gửi lệnh SET
-    private static final String SCRIPT_TRIGGER_OID = "1.3.6.1.4.1.9999.1.0"; // OID dùng để kích hoạt script Iptables trên Agent
+    private static final String SCRIPT_TRIGGER_OID = "1.3.6.1.4.1.9999.1.0"; // OID dùng để kích hoạt script Iptables
+                                                                             // trên Agent
 
     @Autowired
     private SnmpPollerService pollerService; // Mượn dữ liệu CPU/RAM/PPS để ghi log
@@ -118,7 +119,8 @@ public class TrapReceiverService implements CommandResponder {
                             log.put("maxTcp", currentMetrics.getOrDefault("tcp", "0"));
                             log.put("status", success ? "Đã chặn" : "Thất bại");
 
-                        }, CompletableFuture.delayedExecutor(currentDelay, TimeUnit.SECONDS)); // Đếm ngược 10s mới kích hoạt đánh chặn
+                        }, CompletableFuture.delayedExecutor(currentDelay, TimeUnit.SECONDS)); // Đếm ngược 10s mới kích
+                                                                                               // hoạt đánh chặn
                     }
                 });
             }
@@ -148,7 +150,8 @@ public class TrapReceiverService implements CommandResponder {
             PDU pdu = new PDU();
             pdu.setType(PDU.SET);
 
-            // Gắn OID của script và ném vào giá trị 1 (kích hoạt điều kiện trong script Bash của Agent)
+            // Gắn OID của script và ném vào giá trị 1 (kích hoạt điều kiện trong script
+            // Bash của Agent)
             pdu.add(new VariableBinding(new OID(SCRIPT_TRIGGER_OID), new Integer32(1)));
 
             // Gửi đi và lấy phản hồi
@@ -174,7 +177,7 @@ public class TrapReceiverService implements CommandResponder {
 
     public void setMitigationDelay(int delay) {
         this.mitigationDelay = delay;
-        logger.info("[*] Cấu hình hệ thống: Đã cập nhật thời gian trễ Auto-IPS thành {} giây", delay);
+        logger.info("⚙️ System configuration: Auto-IPS delay time has been updated to {} seconds", delay);
     }
 
     public List<Map<String, Object>> getEvaluationLogs() {

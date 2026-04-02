@@ -1,11 +1,35 @@
 import React, { useState } from 'react';
-import { Select, Input, Button, message } from 'antd';
+import { Dropdown, Input, Button, message } from 'antd';
 import { dashboardAPI } from '../lib/api';
-import { Server, Activity, Share2, Plus, Zap } from 'lucide-react';
+import { Server, Activity, Share2, Plus, Zap, ChevronDown } from 'lucide-react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 
-const TopHeader = ({ ips, selectedIp, onSelectIp, activeTab, onSelectTab, onAddIpSuccess }) => {
+const TopHeader = ({ ips, selectedIp, onAddIpSuccess }) => {
   const [newIp, setNewIp] = useState("");
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const currentPath = location.pathname;
+  const [, setSearchParams] = useSearchParams();
+
+  // Tạo giao diện mở trong Tab mới khi ấn chuột phải
+  const menuItems = ips.map(agent => ({
+    key: agent.ip,
+    label: (
+      <a 
+        href={`?ip=${agent.ip}`} 
+        onClick={(e) => {
+          // Chuột trái chạy React Router Push state thay thế href native
+          if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+            e.preventDefault();
+            setSearchParams({ ip: agent.ip });
+          }
+        }}
+        style={{ fontSize: '14px', padding: '4px 8px', display: 'block', fontWeight: selectedIp === agent.ip ? 'bold' : 'normal', color: '#1f2937' }}
+      >
+        {agent.ip} - {agent.sysName}
+      </a>
+    )
+  }));
 
   const handleAddIp = async () => {
     if (!newIp.trim()) {
@@ -23,6 +47,9 @@ const TopHeader = ({ ips, selectedIp, onSelectIp, activeTab, onSelectTab, onAddI
     }
     setLoading(false);
   };
+
+  const selectedAgent = ips.find(a => a.ip === selectedIp);
+  const displayLabel = selectedAgent ? `${selectedAgent.ip} - ${selectedAgent.sysName}` : "Chọn VM Agent...";
 
   return (
     <div style={{ 
@@ -42,14 +69,12 @@ const TopHeader = ({ ips, selectedIp, onSelectIp, activeTab, onSelectTab, onAddI
           <Server size={20} /> SNMP Manager
         </h3>
         
-        <Select
-          value={selectedIp}
-          onChange={onSelectIp}
-          style={{ width: 160 }}
-          options={ips.map(ip => ({ label: ip, value: ip }))}
-          placeholder="Chọn VM Agent..."
-          notFoundContent="Chưa có thiết bị nào"
-        />
+        <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+          <Button style={{ width: 'auto', minWidth: 160, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderColor: 'transparent' }}>
+            <span style={{ fontWeight: 500 }}>{displayLabel}</span>
+            <ChevronDown size={14} style={{ opacity: 0.6, marginLeft: '8px' }} />
+          </Button>
+        </Dropdown>
 
         <div style={{ display: 'flex' }}>
           <Input 
@@ -72,21 +97,21 @@ const TopHeader = ({ ips, selectedIp, onSelectIp, activeTab, onSelectTab, onAddI
 
       {/* Khu vực bên phải: Điều hướng (Tabs) */}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <TabButton 
-          active={activeTab === 'Overview'} 
-          onClick={() => onSelectTab('Overview')}
+        <TabLink 
+          to={`/${selectedIp ? `?ip=${selectedIp}` : ''}`} 
+          active={currentPath === '/'} 
           icon={<Activity size={18} />}
           label="Overview"
         />
-        <TabButton 
-          active={activeTab === 'Benchmark'} 
-          onClick={() => onSelectTab('Benchmark')}
+        <TabLink 
+          to={`/benchmark${selectedIp ? `?ip=${selectedIp}` : ''}`} 
+          active={currentPath === '/benchmark'} 
           icon={<Zap size={18} />}
           label="Benchmark"
         />
-        <TabButton 
-          active={activeTab === 'Topology'} 
-          onClick={() => onSelectTab('Topology')}
+        <TabLink 
+          to={`/topology${selectedIp ? `?ip=${selectedIp}` : ''}`} 
+          active={currentPath === '/topology'} 
           icon={<Share2 size={18} />}
           label="Topology"
         />
@@ -96,29 +121,30 @@ const TopHeader = ({ ips, selectedIp, onSelectIp, activeTab, onSelectTab, onAddI
 };
 
 // Component con Nút bấm tuỳ chỉnh (Tab Header)
-const TabButton = ({ active, onClick, icon, label }) => {
+const TabLink = ({ to, active, icon, label }) => {
   return (
-    <button 
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '8px 16px',
-        backgroundColor: active ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-        color: active ? '#ffffff' : '#93c5fd',
-        border: 'none',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        fontSize: '15px',
-        fontWeight: active ? '600' : '500',
-        transition: 'all 0.2s ease-in-out'
-      }}
-      onMouseOver={(e) => e.currentTarget.style.color = '#ffffff'}
-      onMouseOut={(e) => { if(!active) e.currentTarget.style.color = '#93c5fd'; }}
-    >
-      {icon} {label}
-    </button>
+    <Link to={to} style={{ textDecoration: 'none' }}>
+      <button 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '8px 16px',
+          backgroundColor: active ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+          color: active ? '#ffffff' : '#93c5fd',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '15px',
+          fontWeight: active ? '600' : '500',
+          transition: 'all 0.2s ease-in-out'
+        }}
+        onMouseOver={(e) => e.currentTarget.style.color = '#ffffff'}
+        onMouseOut={(e) => { if(!active) e.currentTarget.style.color = '#93c5fd'; }}
+      >
+        {icon} {label}
+      </button>
+    </Link>
   );
 };
 

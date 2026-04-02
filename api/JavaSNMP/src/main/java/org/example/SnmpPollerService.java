@@ -36,13 +36,18 @@ public class SnmpPollerService {
     private static final String OID_RAM_AVAIL = "1.3.6.1.4.1.2021.4.6.0";
     private static final String OID_TCP_CURR = "1.3.6.1.2.1.6.9.0";
 
+    private static final String OID_SYS_DESCR = "1.3.6.1.2.1.1.1.0";
+
     private List<String> targetIps = new CopyOnWriteArrayList<>();
 
     private class VmState {
-        long lastInBytes = 0; long lastOutBytes = 0;
-        long lastInPkts = 0;  long lastOutPkts = 0;
+        long lastInBytes = 0;
+        long lastOutBytes = 0;
+        long lastInPkts = 0;
+        long lastOutPkts = 0;
         long lastTime = 0;
     }
+
     private Map<String, VmState> states = new ConcurrentHashMap<>();
 
     private Map<String, Map<String, Object>> allMetrics = new ConcurrentHashMap<>();
@@ -68,7 +73,7 @@ public class SnmpPollerService {
     public void addDevice(String ip) {
         if (!targetIps.contains(ip)) {
             targetIps.add(ip);
-            states.put(ip, new VmState()); // Tạo kho lưu trữ cũ cho IP này
+            states.put(ip, new VmState());
             logger.info("[+] Added new Agent to monitor: {}", ip);
         }
     }
@@ -99,6 +104,7 @@ public class SnmpPollerService {
             pdu.add(new VariableBinding(new OID(OID_RAM_TOTAL)));
             pdu.add(new VariableBinding(new OID(OID_RAM_AVAIL)));
             pdu.add(new VariableBinding(new OID(OID_TCP_CURR)));
+            pdu.add(new VariableBinding(new OID(OID_SYS_DESCR)));
             pdu.setType(PDU.GET);
 
             ResponseEvent responseEvent = snmp.send(pdu, target);
@@ -116,12 +122,25 @@ public class SnmpPollerService {
                 String ramAvailStr = responsePDU.getVariableBindings().get(6).getVariable().toString();
                 String tcpCurrStr = responsePDU.getVariableBindings().get(7).getVariable().toString();
 
-                if(inBytesStr.equals("noSuchObject")) return;
+                String sysDescrStr = responsePDU.getVariableBindings().get(8).getVariable().toString();
+
+                if (inBytesStr.equals("noSuchObject"))
+                    return;
+
+                String sysName = "Unknown OS";
+                if (!sysDescrStr.equals("noSuchObject")) {
+                    String[] parts = sysDescrStr.split(" ");
+                    if (parts.length >= 2) {
+                        sysName = parts[0] + " " + parts[1];
+                    } else {
+                        sysName = sysDescrStr;
+                    }
+                }
 
                 long cpuUsage = 100 - Long.parseLong(cpuIdleStr);
                 long ramTotal = Long.parseLong(ramTotalStr);
                 long ramAvail = Long.parseLong(ramAvailStr);
-                double ramUsage = ((double)(ramTotal - ramAvail) / ramTotal) * 100;
+                double ramUsage = ((double) (ramTotal - ramAvail) / ramTotal) * 100;
 
                 long tcpConns = Long.parseLong(tcpCurrStr);
                 long currentInBytes = Long.parseLong(inBytesStr);
@@ -143,19 +162,24 @@ public class SnmpPollerService {
                     }
                 }
 
-                state.lastInBytes = currentInBytes; state.lastOutBytes = currentOutBytes;
-                state.lastInPkts = currentInPkts;   state.lastOutPkts = currentOutPkts;
+                state.lastInBytes = currentInBytes;
+                state.lastOutBytes = currentOutBytes;
+                state.lastInPkts = currentInPkts;
+                state.lastOutPkts = currentOutPkts;
                 state.lastTime = currentTime;
 
                 metrics.put("cpu", cpuUsage);
                 metrics.put("ram", Math.round(ramUsage * 100.0) / 100.0);
-                metrics.put("downKbps", inKbps);  metrics.put("upKbps", outKbps);
-                metrics.put("inPps", inPps);      metrics.put("outPps", outPps);
+                metrics.put("downKbps", inKbps);
+                metrics.put("upKbps", outKbps);
+                metrics.put("inPps", inPps);
+                metrics.put("outPps", outPps);
                 metrics.put("tcp", tcpConns);
+                metrics.put("sysName", sysName);
                 metrics.put("status", "ONLINE");
 
-                logger.info("[{}] CPU: {}% | RAM: {}% | Down: {} Kbps | In: {} pps | TCP: {}",
-                        ip, cpuUsage, String.format("%.1f", ramUsage), inKbps, inPps, tcpConns);
+                logger.info("[{}] OS: {} | CPU: {}% | RAM: {}% | Down: {} Kbps | In: {} pps | TCP: {}",
+                        ip, sysName, cpuUsage, String.format("%.1f", ramUsage), inKbps, inPps, tcpConns);
             } else {
                 metrics.put("status", "OFFLINE");
             }
@@ -165,6 +189,7 @@ public class SnmpPollerService {
             logger.error("❌ Error polling data from {}: {}", ip, e.getMessage());
         }
     }
+
     public Map<String, Map<String, Object>> getAllMetrics() {
         return allMetrics;
     }
