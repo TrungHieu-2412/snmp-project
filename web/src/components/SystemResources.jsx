@@ -28,7 +28,7 @@ const SystemResources = ({ selectedIp }) => {
           };
           
           const updatedList = [...prevData, newDataPoint];
-          return updatedList.length > 15 ? updatedList.slice(updatedList.length - 15) : updatedList;
+          return updatedList.length > 100 ? updatedList.slice(updatedList.length - 100) : updatedList;
         });
 
         setTcpConnections(deviceData.tcp || 0); 
@@ -49,6 +49,7 @@ const SystemResources = ({ selectedIp }) => {
   ];
 
   const gaugeColor = tcpConnections > 100 ? '#ef4444' : '#10b981';
+  const chartWidth = Math.max(800, resourceData.length * 60);
 
   return (
       <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
@@ -56,22 +57,25 @@ const SystemResources = ({ selectedIp }) => {
           System Resources & Monitoring
         </h2>
         
+        {/* Biểu đồ 1: Tải CPU & RAM */}
         <div style={{ marginBottom: '30px' }}>
           <h3 style={{ fontSize: '14px', color: '#4b5563', marginBottom: '10px' }}>
             CPU & RAM Utilization (%)
           </h3>
-          <div style={{ height: '200px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={resourceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="cpu" stroke="#ef4444" name="CPU Load (%)" strokeWidth={2} isAnimationActive={false} />
-                <Line type="monotone" dataKey="ram" stroke="#8b5cf6" name="RAM Load (%)" strokeWidth={2} isAnimationActive={false} />
-              </LineChart>
-            </ResponsiveContainer>
+          <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
+            <div style={{ width: `${chartWidth}px`, height: '200px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={resourceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="cpu" stroke="#ef4444" name="CPU Load (%)" strokeWidth={2} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="ram" stroke="#8b5cf6" name="RAM Load (%)" strokeWidth={2} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 

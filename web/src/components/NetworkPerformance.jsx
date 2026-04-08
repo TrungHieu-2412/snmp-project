@@ -26,7 +26,7 @@ const NetworkPerformance = ({ selectedIp }) => {
           };
           
           const updatedList = [...prevData, newDataPoint];
-          return updatedList.length > 15 ? updatedList.slice(updatedList.length - 15) : updatedList;
+          return updatedList.length > 100 ? updatedList.slice(updatedList.length - 100) : updatedList;
         });
       }
     };
@@ -37,79 +37,87 @@ const NetworkPerformance = ({ selectedIp }) => {
     return () => clearInterval(intervalId);
   }, [selectedIp]);
   
+  const chartWidth = Math.max(800, networkData.length * 60);
+
   return (
     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
       <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#1f2937' }}>
         Network Performance
       </h2>
       
+      {/* Biểu đồ 1: Băng thông (Throughput) */}
       <div style={{ marginBottom: '30px' }}>
         <h3 style={{ fontSize: '14px', color: '#4b5563', marginBottom: '10px' }}>
           Throughput (Mbps)
         </h3>
-        <div style={{ height: '200px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={networkData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="bandwidthUp" 
-                stroke="#10b981" 
-                name="Upload (Mbps)" 
-                strokeWidth={2} 
-                dot={false}
-                isAnimationActive={false} 
-              />
-              <Line 
-                type="monotone" 
-                dataKey="bandwidthDown" 
-                stroke="#3b82f6" 
-                name="Download (Mbps)" 
-                strokeWidth={2} 
-                dot={false}
-                isAnimationActive={false} 
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
+          <div style={{ width: `${chartWidth}px`, height: '200px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={networkData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="bandwidthUp" 
+                  stroke="#10b981" 
+                  name="Upload (Mbps)" 
+                  strokeWidth={2} 
+                  dot={false}
+                  isAnimationActive={false} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="bandwidthDown" 
+                  stroke="#3b82f6" 
+                  name="Download (Mbps)" 
+                  strokeWidth={2} 
+                  dot={false}
+                  isAnimationActive={false} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
+      {/* Biểu đồ 2: Tốc độ gói tin (PPS) */}
       <div>
         <h3 style={{ fontSize: '14px', color: '#4b5563', marginBottom: '10px' }}>
           Packets Per Second (PPS)
         </h3>
-        <div style={{ height: '200px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={networkData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="ppsOut" 
-                stroke="#f59e0b" 
-                name="PPS Out" 
-                strokeWidth={2} 
-                dot={false}
-                isAnimationActive={false} 
-              />
-              <Line 
-                type="monotone" 
-                dataKey="ppsIn" 
-                stroke="#8b5cf6" 
-                name="PPS In" 
-                strokeWidth={2} 
-                dot={false}
-                isAnimationActive={false} 
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
+          <div style={{ width: `${chartWidth}px`, height: '200px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={networkData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="ppsOut" 
+                  stroke="#f59e0b" 
+                  name="PPS Out" 
+                  strokeWidth={2} 
+                  dot={false}
+                  isAnimationActive={false} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="ppsIn" 
+                  stroke="#8b5cf6" 
+                  name="PPS In" 
+                  strokeWidth={2} 
+                  dot={false}
+                  isAnimationActive={false} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>

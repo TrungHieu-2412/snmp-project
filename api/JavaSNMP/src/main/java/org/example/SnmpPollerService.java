@@ -113,7 +113,7 @@ public class SnmpPollerService {
 
             // Tạo CommunityTarget (cấu hình thông tin xác thực)
             CommunityTarget target = new CommunityTarget();
-            target.setCommunity(new OctetString(RO_COMMUNITY));
+            target.setCommunity(new OctetString(RO_COMMUNITY)); // Sử dụng community string "public" đã cấu hình trên Agent
             target.setAddress(targetAddress);
             target.setRetries(1);
             target.setTimeout(1500);
