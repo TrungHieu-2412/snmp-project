@@ -74,4 +74,12 @@ public class DashboardController {
     public ResponseEntity<List<Map<String, Object>>> getEvaluationLogs() {
         return ResponseEntity.ok(trapService.getEvaluationLogs());
     }
+
+    // Cung cấp API GET để kiểm tra xem IP có hỗ trợ tính năng IPS (TRAP & SET)
+    // không
+    @GetMapping("/features/ips-support")
+    public ResponseEntity<Boolean> checkIpsSupport(@RequestParam String ip) {
+        boolean isSupported = "10.0.1.2".equals(ip);
+        return ResponseEntity.ok(isSupported);
+    }
 }

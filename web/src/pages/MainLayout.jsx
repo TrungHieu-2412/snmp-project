@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+// MainLayout.jsx: Giao diện chính bao bọc thanh điều hướng (TopHeader) và sử dụng thẻ Outlet để hiển thị nội dung các trang con (Overview/Benchmark/Topology).
+import { useState, useEffect } from 'react';
 import { Outlet, useSearchParams } from 'react-router-dom';
 import TopHeader from '../components/TopHeader';
 import { dashboardAPI } from '../lib/api';
 
-// Giao diện chính: Bao bọc thanh điều hướng (TopHeader) và sử dụng thẻ Outlet để hiển thị nội dung các trang con (Overview/Benchmark/Topology)
 const MainLayout = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedIp = searchParams.get('ip');
   const [ips, setIps] = useState([]);
 
-  // Gọi API lấy các Agent IP hợp lệ mỗi 5 giây, và tự động chọn IP mặc định
+  // Gọi API lấy các Agent IP hợp lệ mỗi 3 giây, và tự động chọn IP mặc định
   useEffect(() => {
     const fetchIps = async () => {
       const data = await dashboardAPI.getMetrics();
@@ -28,7 +28,7 @@ const MainLayout = () => {
     
     fetchIps();
 
-    const intervalId = setInterval(fetchIps, 5000);
+    const intervalId = setInterval(fetchIps, 3000);
     return () => clearInterval(intervalId);
   }, [selectedIp, setSearchParams]);
 

@@ -1,40 +1,64 @@
 // ControlPanel.jsx: Khối tổng hợp trạng thái An ninh mạng, hiển thị ngay hộp cảnh báo Đỏ (nếu có tấn công) và các công tắc điều chỉnh chế độ chặn Iptables.
 import { useState, useEffect } from 'react';
 import { Switch, Select, Button, Alert, Tag, notification } from 'antd';
-import { ShieldAlert, ShieldCheck, RefreshCw, Zap } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Zap, Lock } from 'lucide-react';
 import { dashboardAPI } from '../lib/api';
 
-const ControlPanel = () => {
-  const [isAutoMode, setIsAutoMode] = useState(true);
+const ControlPanel = ({ selectedIp }) => {
+  const [isSupported, setIsSupported] = useState(true);
+  const [isAutoMode, setIsAutoMode] = useState(true); 
   const [delay, setDelay] = useState(10);
   
   const [currentAlert, setCurrentAlert] = useState(null);
   const [isUnderAttack, setIsUnderAttack] = useState(false);
 
+  // Kiểm tra xem máy Agent này có hỗ trợ IPS không
   useEffect(() => {
+    const checkSupport = async () => {
+      if (selectedIp) {
+        const supported = await dashboardAPI.checkIpsSupport(selectedIp);
+        setIsSupported(supported);
+      }
+    };
+    checkSupport();
+  }, [selectedIp])
+
+  // Lấy dữ liệu cảnh báo tấn công nhận từ API
+  useEffect(() => {
+    if (!isSupported) return;
     const fetchAlerts = async () => {
+      // Lấy danh sách cảnh báo từ API
       const alerts = await dashboardAPI.getAlerts();
       if (alerts && alerts.length > 0) {
         const latestAlert = alerts[alerts.length - 1];
         
+        // Chỉ xử lý cảnh báo của máy Agent đang được chọn
+        if (latestAlert.ip !== selectedIp) return;
+
+        // Kiểm tra xem có cảnh báo mới không và cập nhật nếu có
         if (!currentAlert || latestAlert.time !== currentAlert.time) {
           setCurrentAlert(latestAlert);
+          
+          // Cập nhật trạng thái tấn công
           if (latestAlert.status === 'Resolved') {
             setIsUnderAttack(false);
           } else {
             setIsUnderAttack(true);
           }
-        } 
+        }
+        // Nếu không có thì hiển thị trạng thái an toàn
         else if (latestAlert.status === 'Resolved' && isUnderAttack) {
           setIsUnderAttack(false);
           notification.success({ message: 'Auto-Defense', description: 'System successfully activated IPS shield!' });
         }
       }
     };
-    const intervalId = setInterval(fetchAlerts, 5000);
+    // Lấy dữ liệu cảnh báo tấn công mỗi 5 giây
+    const intervalId = setInterval(fetchAlerts, 3000);
     return () => clearInterval(intervalId);
-  }, [currentAlert, isUnderAttack]);
+  }, [currentAlert, isUnderAttack, isSupported, selectedIp]);
 
+  // Xử lý logic thay đổi thời gian tự động kích hoạt IPS
   const handleDelayChange = async (value) => {
     setDelay(value);
     const success = await dashboardAPI.updateDelayConfig(value);
@@ -45,6 +69,7 @@ const ControlPanel = () => {
     }
   };
 
+  // Xử lý logic thay đổi chế độ Auto-IPS
   const handleAutoModeChange = async (checked) => {
     setIsAutoMode(checked);
     const success = await dashboardAPI.updateAutoModeConfig(checked);
@@ -56,8 +81,9 @@ const ControlPanel = () => {
     }
   };
 
+  // Xử lý logic chặn thủ công
   const handleManualMitigation = async () => {
-    const ipToBlock = currentAlert ? currentAlert.ip : '10.0.1.2';
+    const ipToBlock = currentAlert ? currentAlert.ip : selectedIp;
     const success = await dashboardAPI.mitigateAttack(ipToBlock);
     
     if (success) {
@@ -68,11 +94,22 @@ const ControlPanel = () => {
     }
   };
 
+  if (!isSupported) {
+    return (
+      <div style={{ backgroundColor: '#f9fafb', padding: '40px 20px', borderRadius: '8px', border: '1px dashed #d1d5db', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <Lock size={48} color="#9ca3af" style={{ margin: '0 auto 15px' }} />
+        <h3 style={{ color: '#4b5563', marginBottom: '10px' }}>Control and Warning Panel - Not Available</h3>
+        <p style={{ color: '#6b7280' }}>The IPS and Trap features are currently only available on the <b>10.0.1.2 (VM1)</b> agent.</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-      <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#1f2937' }}>
-        Control and Warning Panel
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '18px', color: '#1f2937', margin: 0 }}>Control and Warning Panel</h2>
+        <Tag color="blue">Supported Node</Tag>
+      </div>
 
       <div style={{ marginBottom: '20px' }}>
         {isUnderAttack && currentAlert ? (
@@ -121,9 +158,9 @@ const ControlPanel = () => {
             style={{ width: 250 }}
             disabled={!isAutoMode} 
           >
-            <Select.Option value={0}>0 seconds (Activate shield immediately)</Select.Option>
-            <Select.Option value={10}>10 seconds (Measure system degradation)</Select.Option>
-            <Select.Option value={60}>60 seconds (Simulate peak load)</Select.Option>
+            <Select.Option value={0}>0 seconds</Select.Option>
+            <Select.Option value={10}>10 seconds</Select.Option>
+            <Select.Option value={60}>60 seconds</Select.Option>
           </Select>
         </div>
       </div>

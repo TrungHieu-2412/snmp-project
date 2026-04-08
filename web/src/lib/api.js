@@ -26,6 +26,21 @@ export const dashboardAPI = {
     }
   },
 
+  // Chạy bài test mô phỏng Wireshark để trích xuất payload raw từ giao thức SNMP
+  runSecurityDemo: async (ip) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/benchmark/security-demo?ip=${ip}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        return { error: errText };
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("API runSecurityDemo error:", error);
+      return { error: "Network error or failure during packet capture." };
+    }
+  },
+
   // Gửi lệnh thủ công để kích hoạt bảo vệ Iptables (thông qua lệnh SNMP SET)
   mitigateAttack: async (targetIp) => {
     try {
@@ -95,11 +110,26 @@ export const dashboardAPI = {
   runProtocolBenchmark: async (ip) => {
     try {
       const response = await fetch(`${API_BASE_URL}/benchmark/run?ip=${ip}`);
-      if (!response.ok) throw new Error('Error checking benchmark');
+      if (!response.ok) {
+        const errText = await response.text();
+        return { error: errText };
+      }
       return await response.json();
     } catch (error) {
       console.error("API runProtocolBenchmark error:", error);
-      return [];
+      return { error: "Network error or failure during benchmark." };
+    }
+  },
+
+  // Kiểm tra xem IP Agent có hỗ trợ tính năng IPS (TRAP & SET) không
+  checkIpsSupport: async (ip) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/features/ips-support?ip=${ip}`);
+      if (!response.ok) throw new Error('Error checking IPS support');
+      return await response.json();
+    } catch (error) {
+      console.error("API checkIpsSupport error:", error);
+      return false;
     }
   }
 };

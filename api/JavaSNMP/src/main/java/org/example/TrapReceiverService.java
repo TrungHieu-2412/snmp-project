@@ -27,20 +27,29 @@ import java.util.concurrent.TimeUnit;
 public class TrapReceiverService implements CommandResponder {
     private static final Logger logger = LoggerFactory.getLogger(TrapReceiverService.class);
 
+    // Lắng nghe TRAP trên tất cả các interface (0.0.0.0), sử dụng cổng 10162 thay cho cổng 162 (yêu cầu quyền root)
     private static final String TRAP_LISTEN_ADDRESS = "0.0.0.0/10162";
+
+    // Community string read-write Agent dùng để kiểm tra quyền ghi khi nhận SNMP SET
     private static final String RW_COMMUNITY = "private_admin";
     private static final String SET_TARGET_PORT = "161";
+
+    // OID tùy chỉnh: được định nghĩa trên Agent, khi SET giá trị 1 sẽ kích hoạt script iptables chặn tấn công
     private static final String SCRIPT_TRIGGER_OID = "1.3.6.1.4.1.9999.1.0";
 
+    // Service Poller để lấy số liệu từ Agent
     @Autowired
     private SnmpPollerService pollerService;
 
+    // Danh sách cảnh báo TRAP (alert) đã nhận
     private List<Map<String, String>> alertHistory = new ArrayList<>();
-    private List<Map<String, Object>> evaluationLogs = new ArrayList<>();
-    private int logIdCounter = 1;
 
-    private int mitigationDelay = 10;
-    private boolean isAutoMode = true;
+    // Nhật ký đánh giá: mỗi đợt tấn công tạo 1 bản ghi gồm các thông số đo đạc trước/sau chặn
+    private List<Map<String, Object>> evaluationLogs = new ArrayList<>();
+    private int logIdCounter = 1; // ID tăng dần cho mỗi bản ghi log (dùng làm key trong bảng FE)
+
+    private int mitigationDelay = 10; // Thời gian delay trước khi chặn (giây)
+    private boolean isAutoMode = true; // true = Auto-IPS tự chặn, false = chờ thủ công
 
     // Cấu hình cổng lắng nghe TRAP (10162) để nhận các cảnh báo từ Agent đẩy về.
     @PostConstruct
@@ -53,31 +62,34 @@ public class TrapReceiverService implements CommandResponder {
             snmp.addCommandResponder(this);
 
             transport.listen();
-            logger.info("✅ NMS SYSTEM: Listening for TRAP packet at port {}", TRAP_LISTEN_ADDRESS);
+            logger.info("✅ NMS TRAP: Listening for TRAP packet at port {}", TRAP_LISTEN_ADDRESS);
 
         } catch (IOException e) {
             logger.error("❌ Trap Receiver initialization error: ", e);
         }
     }
 
-    // Được gọi tự động mỗi khi Agent gửi một TRAP thông báo có nguy hiểm mạng (SYN
-    // Flood, v.v.).
+    // Được gọi tự động mỗi khi Agent gửi một TRAP thông báo có tấn công mạng (SYN Flood).
     @Override
     public void processPdu(CommandResponderEvent event) {
         if (event.getPDU() != null) {
-            String peerAddress = event.getPeerAddress().toString();
+            String peerAddress = event.getPeerAddress().toString(); // IP:port của Agent gửi TRAP
             int pduType = event.getPDU().getType();
 
+            // Chỉ xử lý TRAP v2 (PDU.TRAP) hoặc TRAP v1 (PDU.V1TRAP), bỏ qua các PDU khác
             if (pduType == PDU.TRAP || pduType == PDU.V1TRAP) {
                 logger.warn("⚠️ SECURITY WARNING: Received TRAP packet from [{}]", peerAddress);
 
+                // Duyệt qua tất cả các Variable Binding trong TRAP để tìm giá trị đáng nghi vấn
                 event.getPDU().getVariableBindings().forEach(vb -> {
                     String value = vb.getVariable().toString();
 
+                    // Nếu payload chứa chuỗi "ASYN_FLOOD_DETECTED", xác nhận là tấn công thật
                     if (value.contains("SYN_FLOOD_DETECTED")) {
-                        String targetIp = peerAddress.split("/")[0];
-                        int currentDelay = this.mitigationDelay;
+                        String targetIp = peerAddress.split("/")[0]; // Trích xuất chỉ phần IP (bỏ port)
+                        int currentDelay = this.mitigationDelay; // Chụp lại delay hiện tại (tránh race condition)
 
+                        // Tạo bản ghi đánh giá (EvaluationLog): ghi lại thời gian bắt đầu, loại tấn công, delay
                         Map<String, Object> log = new ConcurrentHashMap<>();
                         log.put("key", String.valueOf(logIdCounter++));
                         log.put("startTime", new SimpleDateFormat("HH:mm:ss").format(new Date()));
@@ -86,22 +98,27 @@ public class TrapReceiverService implements CommandResponder {
                         log.put("status", "Processing...");
                         evaluationLogs.add(log);
 
+                        // Tạo cảnh báo (Alert)
                         Map<String, String> alert = new ConcurrentHashMap<>();
                         alert.put("time", String.valueOf(System.currentTimeMillis()));
                         alert.put("ip", targetIp);
                         alert.put("attackType", "TCP SYN Flood");
                         alert.put("message", "SYN Flood attack is occurred!");
-
                         alertHistory.add(alert);
 
                         logger.error("[VERIFICATION SYSTEM]: SYN Flood attack is occurred at {}!", targetIp);
-                        
+
+                        // Chế độ tự động
                         if (isAutoMode) {
-                            logger.warn("⌛ The system will automatically activate the Iptables shield after {} seconds...", currentDelay);
+                            logger.warn(
+                                    "⌛ The system will automatically activate the Iptables shield after {} seconds...",
+                                    currentDelay);
 
+                            // Chạy task chặn bất đồng bộ sau "currentDelay" giây (không chặn luồng xử lý TRAP)
                             CompletableFuture.runAsync(() -> {
-                                boolean success = triggerMitigationSet(targetIp);
+                                boolean success = triggerMitigationSet(targetIp); // Gửi SNMP SET
 
+                                // Thu thập số liệu thực tế tại thời điểm sau chặn để lưu vào log đánh giá
                                 Map<String, Object> currentMetrics = pollerService.getMetricsByIp(targetIp);
 
                                 log.put("endTime", new SimpleDateFormat("HH:mm:ss").format(new Date()));
@@ -112,15 +129,18 @@ public class TrapReceiverService implements CommandResponder {
                                 log.put("maxTcp", currentMetrics.getOrDefault("tcp", "0"));
                                 log.put("status", success ? "Resolved" : "Failed");
 
+                                // Cập nhật trạng thái cho Alert
                                 if (success) {
                                     alert.put("status", "Resolved");
                                 }
 
                             }, CompletableFuture.delayedExecutor(currentDelay, TimeUnit.SECONDS));
                         } else {
+                            // Chế độ Thủ công: chỉ log cảnh báo, không tự gửi SET
+                            // Alert vẫn giữ trạng thái Processing
                             logger.warn("⚠️ Auto-IPS is Disabled. Waiting for manual intervention...");
                             log.put("status", "Manual Pending");
-                            alert.put("status", "Processing..."); // Giữ Processing để cảnh báo FE vẫn hiển thị Đỏ
+                            alert.put("status", "Processing...");
                         }
                     }
                 });
@@ -132,23 +152,27 @@ public class TrapReceiverService implements CommandResponder {
     public boolean triggerMitigationSet(String targetIp) {
         logger.info("⚡ ACTION: Sending SNMP SET to {} to activate defense...", targetIp);
         try {
+            // Tạo SNMP session mới (không tái dùng session polling để tránh xung đột luồng)
             TransportMapping<? extends Address> transport = new DefaultUdpTransportMapping();
             transport.listen();
             Snmp snmp = new Snmp(transport);
             Address targetAddress = GenericAddress.parse("udp:" + targetIp + "/" + SET_TARGET_PORT);
 
+            // Dùng community read-write (private_admin)
             CommunityTarget target = new CommunityTarget();
             target.setCommunity(new OctetString(RW_COMMUNITY));
             target.setAddress(targetAddress);
             target.setRetries(1);
-            target.setTimeout(2000);
+            target.setTimeout(1500);
             target.setVersion(SnmpConstants.version2c);
 
             PDU pdu = new PDU();
-            pdu.setType(PDU.SET);
+            pdu.setType(PDU.SET); // PDU.SET: ghi đè giá trị OID trên Agent
 
+            // SET OID = 1 -> Agent nhận được sẽ chạy script kích hoạt iptables
             pdu.add(new VariableBinding(new OID(SCRIPT_TRIGGER_OID), new Integer32(1)));
 
+            // Nhận phản hồi từ Agent
             ResponseEvent responseEvent = snmp.send(pdu, target);
             PDU responsePDU = responseEvent.getResponse();
 
@@ -168,8 +192,7 @@ public class TrapReceiverService implements CommandResponder {
         }
     }
 
-    // Hàm hỗ trợ cập nhật cấu hình độ trễ Delay (phục vụ mục đích đánh giá hiệu
-    // năng) từ Frontend đẩy xuống.
+    // Hàm hỗ trợ cập nhật cấu hình độ trễ Delay (phục vụ mục đích đánh giá hiệu năng) từ FE đẩy xuống.
     public void setMitigationDelay(int delay) {
         this.mitigationDelay = delay;
         logger.info("⚙️ System configuration: Auto-IPS delay time has been updated to {} seconds", delay);
@@ -185,8 +208,7 @@ public class TrapReceiverService implements CommandResponder {
         return evaluationLogs;
     }
 
-    // Lấy danh sách lịch sử cảnh báo tấn công để hiển thị lên bảng điều khiển
-    // Frontend.
+    // Lấy danh sách lịch sử cảnh báo tấn công để hiển thị lên bảng điều khiển FE.
     public List<Map<String, String>> getAlertHistory() {
         return alertHistory;
     }
