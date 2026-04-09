@@ -99,7 +99,7 @@ const ControlPanel = ({ selectedIp }) => {
       <div style={{ backgroundColor: '#f9fafb', padding: '40px 20px', borderRadius: '8px', border: '1px dashed #d1d5db', textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <Lock size={48} color="#9ca3af" style={{ margin: '0 auto 15px' }} />
         <h3 style={{ color: '#4b5563', marginBottom: '10px' }}>Control and Warning Panel - Not Available</h3>
-        <p style={{ color: '#6b7280' }}>The IPS and Trap features are currently only available on the <b>10.0.1.2 (VM1)</b> agent.</p>
+        <p style={{ color: '#6b7280' }}>The IDPS feature is currently only available on the <b>10.0.1.2 (VM1)</b> agent.</p>
       </div>
     );
   }

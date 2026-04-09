@@ -59,9 +59,21 @@ const SystemResources = ({ selectedIp }) => {
         
         {/* Biểu đồ 1: Tải CPU & RAM */}
         <div style={{ marginBottom: '30px' }}>
-          <h3 style={{ fontSize: '14px', color: '#4b5563', marginBottom: '10px' }}>
-            CPU & RAM Utilization (%)
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '14px', color: '#4b5563', margin: 0 }}>
+              CPU & RAM Utilization (%)
+            </h3>
+            <div style={{ display: 'flex', gap: '15px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#ef4444' }}></div>
+                <span>CPU Load (%)</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#8b5cf6' }}></div>
+                <span>RAM Load (%)</span>
+              </div>
+            </div>
+          </div>
           <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
             <div style={{ width: `${chartWidth}px`, height: '200px' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -70,7 +82,6 @@ const SystemResources = ({ selectedIp }) => {
                   <XAxis dataKey="time" />
                   <YAxis domain={[0, 100]} />
                   <Tooltip />
-                  <Legend />
                   <Line type="monotone" dataKey="cpu" stroke="#ef4444" name="CPU Load (%)" strokeWidth={2} isAnimationActive={false} />
                   <Line type="monotone" dataKey="ram" stroke="#8b5cf6" name="RAM Load (%)" strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
@@ -80,7 +91,7 @@ const SystemResources = ({ selectedIp }) => {
         </div>
 
         <div>
-          <h3 style={{ fontSize: '14px', color: '#4b5563', marginBottom: '0px' }}>
+          <h3 style={{ fontSize: '14px', color: '#4b5563', marginBottom: '15px' }}>
             TCP Connections (Alert Threshold: 100)
           </h3>
           <div style={{ height: '180px', position: 'relative' }}>

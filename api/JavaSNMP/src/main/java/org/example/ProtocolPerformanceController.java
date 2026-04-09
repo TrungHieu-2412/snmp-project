@@ -1,6 +1,8 @@
 // ProtocolPerformanceController.java: Controller để benchmark hiệu suất của SNMPv1, SNMPv2c và SNMPv3 trên Agent
 package org.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.snmp4j.CommunityTarget;
 import org.snmp4j.PDU;
 import org.snmp4j.ScopedPDU;
@@ -29,6 +31,8 @@ import java.util.Map;
 @RequestMapping("/api/benchmark")
 @CrossOrigin(origins = "*")
 public class ProtocolPerformanceController {
+    private static final Logger logger = LoggerFactory.getLogger(ProtocolPerformanceController.class);
+
     // Cấu hình xác thực SNMPv3 (phải khớp với cấu hình trên Agent)
     private static final String V3_USER = "adminv3";
     private static final String V3_AUTH_PASS = "admin12345";
@@ -36,7 +40,7 @@ public class ProtocolPerformanceController {
 
     // Community string dùng cho SNMPv1/v2c (read-only)
     private static final String COMMUNITY = "public";
-    
+
     // OID gốc để bắt đầu bài test: ifInOctets (số byte nhận được trên interface)
     private static final String START_OID = "1.3.6.1.2.1.2.2.1.10";
 
@@ -45,10 +49,12 @@ public class ProtocolPerformanceController {
     public ResponseEntity<?> runBenchmark(@RequestParam("ip") String targetIp) {
         // Chỉ hỗ trợ benchmark trên Agent VM1 (IP: 10.0.1.2)
         if (!"10.0.1.2".equals(targetIp)) {
+            logger.warn("⚠️ FORBIDDEN: Benchmark requested for unauthorized IP: {}", targetIp);
             return ResponseEntity.status(403).body("Warning: Feature 'SNMPv3 Benchmark' is not configured on Agent "
                     + targetIp + ". Please select Agent 10.0.1.2.");
         }
 
+        logger.info("🚀 Starting Protocol Performance Benchmark for IP: {}", targetIp);
         List<Map<String, Object>> results = new ArrayList<>();
         Snmp snmp = null;
 
@@ -60,7 +66,7 @@ public class ProtocolPerformanceController {
             // Khởi tạo USM (User Security Model) để hỗ trợ SNMPv3
             USM usm = new USM(SecurityProtocols.getInstance(), new OctetString(MPv3.createLocalEngineID()), 0);
             SecurityModels.getInstance().addSecurityModel(usm);
-            
+
             // Đăng ký user SNMPv3 với giao thức Auth=SHA, Privacy=AES128
             snmp.getUSM().addUser(new OctetString(V3_USER),
                     new UsmUser(new OctetString(V3_USER),
@@ -69,7 +75,7 @@ public class ProtocolPerformanceController {
 
             // Bắt đầu lắng nghe trên kênh truyền để có thể nhận phản hồi từ Agent
             transport.listen();
-            
+
             // Định nghĩa địa chỉ đích (Agent) cho cả 3 phiên bản SNMP
             Address targetAddress = GenericAddress.parse("udp:" + targetIp + "/161");
 
@@ -91,7 +97,7 @@ public class ProtocolPerformanceController {
                 PDU pduV1 = new PDU();
                 pduV1.add(new VariableBinding(currentOid));
                 pduV1.setType(PDU.GETNEXT); // Sử dụng GETNEXT để lấy OID tiếp theo trong MIB tree
-                
+
                 // Gửi PDU và nhận phản hồi từ Agent
                 ResponseEvent responseV1 = snmp.send(pduV1, targetV1);
                 v1Requests++;
@@ -121,14 +127,14 @@ public class ProtocolPerformanceController {
             pduV2c.setMaxRepetitions(50); // Yêu cầu lấy tối đa 50 OID tiếp theo
             pduV2c.setNonRepeaters(0); // Không có OID đặc biệt nào cần lấy 1 lần
             pduV2c.add(new VariableBinding(new OID(START_OID)));
-            
+
             // Gửi PDU và nhận phản hồi từ Agent, đếm số OID đã lấy được
             int v2cOidsRetrieved = 0;
             ResponseEvent responseV2c = snmp.send(pduV2c, targetV2c);
             if (responseV2c != null && responseV2c.getResponse() != null) {
                 v2cOidsRetrieved = responseV2c.getResponse().getVariableBindings().size();
             }
-            
+
             // Kết thúc đo thời gian và tính toán throughput cho SNMPv2c
             long timeV2c = System.currentTimeMillis() - startV2c;
             long throughputV2c = timeV2c > 0 ? (v2cOidsRetrieved * 1000L) / timeV2c : 0;
@@ -139,13 +145,13 @@ public class ProtocolPerformanceController {
             targetV3.setRetries(1);
             targetV3.setTimeout(1500);
             targetV3.setVersion(SnmpConstants.version3); // Sử dụng SNMPv3
-            
+
             // Sử dụng mức bảo mật cao nhất: xác thực (SHA) + mã hóa payload (AES128)
             targetV3.setSecurityLevel(SecurityLevel.AUTH_PRIV);
             targetV3.setSecurityName(new OctetString(V3_USER)); // Ánh xạ đến user đã đăng ký trong USM
 
             long startV3 = System.currentTimeMillis();
-            
+
             // Khởi tạo ScopedPDU: có thêm contextEngineId và contextName (để tương thích với SNMPv3)
             ScopedPDU pduV3 = new ScopedPDU();
             pduV3.setType(PDU.GETBULK);
@@ -163,6 +169,8 @@ public class ProtocolPerformanceController {
             // Kết thúc đo thời gian và tính toán throughput cho SNMPv3
             long timeV3 = System.currentTimeMillis() - startV3;
             long throughputV3 = timeV3 > 0 ? (v3OidsRetrieved * 1000L) / timeV3 : 0;
+
+            logger.info("✅ Benchmark Finished | v1: {}ms, v2c: {}ms, v3: {}ms", timeV1, timeV2c, timeV3);
 
             // Build Results
             Map<String, Object> resV1 = new HashMap<>();
@@ -198,7 +206,7 @@ public class ProtocolPerformanceController {
             return ResponseEntity.ok(results);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("❌ Error during Protocol Performance Benchmark: ", e);
             return ResponseEntity.status(500).body(null);
         } finally {
             // Đảm bảo luôn đóng kết nối SNMP dù có lỗi xảy ra

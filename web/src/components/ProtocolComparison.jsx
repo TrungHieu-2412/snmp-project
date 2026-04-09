@@ -12,7 +12,7 @@ const PROTOCOL_CONFIG = {
   'SNMPv3':  { color: '#60a5fa', secTag: { color: 'success', icon: <ShieldCheck size={12} />, label: 'Auth + Encryption' } },
 };
 
-// Cột của bảng tóm tắt
+// Các cột của bảng summary
 const summaryColumns = [
   {
     title: 'Protocol',
@@ -65,16 +65,18 @@ const summaryColumns = [
   },
 ];
 
+// Component chính để so sánh hiệu suất SNMPv1, v2c và v3
 const ProtocolComparison = ({ selectedIp }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Hàm gọi API để chạy benchmark
   const handleRunBenchmark = async () => {
     if (!selectedIp) return;
     setLoading(true);
     const result = await dashboardAPI.runProtocolBenchmark(selectedIp);
     if (result && result.error) {
-      message.error(result.error, 5); // Hiển thị 5 giây
+      message.error(result.error, 5);
     } else {
       setData(result);
     }
@@ -88,9 +90,9 @@ const ProtocolComparison = ({ selectedIp }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
         <div>
           <h2 style={{ fontSize: '18px', color: '#1f2937', margin: 0 }}>
-            SNMP Protocol Performance Comparison — Agent: {selectedIp || 'Not selected'}
+            SNMP Protocol Performance Comparison - Agent: {selectedIp || 'Not selected'}
           </h2>
-          <p style={{ color: '#6b7280', fontSize: '13px', margin: '5px 0 0 0' }}>
+          <p style={{ color: '#6b7280', fontSize: '13px', margin: '3px 0 0 0' }}>
             Fetches 50 consecutive OIDs from the Agent using each protocol. Measures latency, throughput, security overhead.
           </p>
         </div>
@@ -117,7 +119,7 @@ const ProtocolComparison = ({ selectedIp }) => {
       {data.length > 0 && (
         <>
           {/* Summary Table */}
-          <Divider orientation="left" style={{ color: '#4b5563', fontWeight: 600 }}>📊 Summary</Divider>
+          <Divider orientation="left" style={{ color: '#4b5563', fontWeight: 600 }}>Summary</Divider>
           <Table
             columns={summaryColumns}
             dataSource={data.map((d) => ({ ...d, key: d.protocol }))}
@@ -127,13 +129,13 @@ const ProtocolComparison = ({ selectedIp }) => {
           />
 
           {/* Charts */}
-          <Divider orientation="left" style={{ color: '#4b5563', fontWeight: 600 }}>📈 Charts</Divider>
+          <Divider orientation="left" style={{ color: '#4b5563', fontWeight: 600 }}>Charts</Divider>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '40px', marginTop: '8px' }}>
 
             {/* Chart 1: Latency */}
             <div>
               <h3 style={{ textAlign: 'center', fontSize: '15px', color: '#4b5563', marginBottom: '12px' }}>
-                ⏱️ Response Time (ms) — Lower is better
+                Response Time (ms) - Lower is better
               </h3>
               <div style={{ height: '280px' }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -158,7 +160,7 @@ const ProtocolComparison = ({ selectedIp }) => {
             {/* Chart 2: Throughput */}
             <div>
               <h3 style={{ textAlign: 'center', fontSize: '15px', color: '#4b5563', marginBottom: '12px' }}>
-                🚀 Throughput (OIDs/s) — Higher is better
+                Throughput (OIDs/s) - Higher is better
               </h3>
               <div style={{ height: '280px' }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -183,12 +185,12 @@ const ProtocolComparison = ({ selectedIp }) => {
           </div>
 
           {/* Key Insights */}
-          <Divider orientation="left" style={{ color: '#4b5563', fontWeight: 600, marginTop: '28px' }}>💡 Key Insights</Divider>
+          <Divider orientation="left" style={{ color: '#4b5563', fontWeight: 600, marginTop: '28px' }}>Key Insights</Divider>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
             {[
-              { proto: 'SNMPv1', bg: '#fef2f2', border: '#fca5a5', points: ['No GETBULK support → 50 round-trips per query', 'Community string sent in plaintext', 'Highest latency, lowest throughput', 'Legacy protocol — avoid in new deployments'] },
+              { proto: 'SNMPv1', bg: '#fef2f2', border: '#fca5a5', points: ['No GETBULK support -> 50 round-trips per query', 'Community string sent in plaintext', 'Highest latency, lowest throughput', 'Legacy protocol - avoid in new deployments'] },
               { proto: 'SNMPv2c', bg: '#f0fdf4', border: '#86efac', points: ['GETBULK: retrieves up to 50 OIDs in 1 UDP packet', 'Community string sent in plaintext (no encryption)', 'Best raw throughput of all 3 versions', 'Recommended for internal/trusted networks'] },
-              { proto: 'SNMPv3', bg: '#eff6ff', border: '#93c5fd', points: ['GETBULK + SHA-1 Auth + AES-128 Encryption', 'Crypto overhead adds latency vs v2c', 'Highest security — prevents spoofing & eavesdropping', 'Required for production/external networks'] },
+              { proto: 'SNMPv3', bg: '#eff6ff', border: '#93c5fd', points: ['GETBULK + SHA-1 Auth + AES-128 Encryption', 'Crypto overhead adds latency vs v2c', 'Highest security - prevents spoofing & eavesdropping', 'Required for production/external networks'] },
             ].map(({ proto, bg, border, points }) => (
               <div key={proto} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: '16px' }}>
                 <div style={{ fontWeight: 700, fontSize: '15px', color: PROTOCOL_CONFIG[proto]?.color, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>

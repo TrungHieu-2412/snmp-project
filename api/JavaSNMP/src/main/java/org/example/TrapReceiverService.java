@@ -62,7 +62,7 @@ public class TrapReceiverService implements CommandResponder {
             snmp.addCommandResponder(this);
 
             transport.listen();
-            logger.info("✅ NMS TRAP: Listening for TRAP packet at port {}", TRAP_LISTEN_ADDRESS);
+            logger.info("💡NMS TRAP: Listening for Trap packet at port {}", TRAP_LISTEN_ADDRESS);
 
         } catch (IOException e) {
             logger.error("❌ Trap Receiver initialization error: ", e);

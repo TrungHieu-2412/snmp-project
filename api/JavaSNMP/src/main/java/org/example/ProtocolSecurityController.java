@@ -1,6 +1,8 @@
 // ProtocolSecurityController.java: Controller này sẽ demo tính bảo mật của SNMPv3 so với SNMPv1, SNMPv2c trên Agent
 package org.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.snmp4j.CommunityTarget;
 import org.snmp4j.PDU;
 import org.snmp4j.ScopedPDU;
@@ -31,6 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @RequestMapping("/api/benchmark")
 @CrossOrigin(origins = "*")
 public class ProtocolSecurityController {
+    private static final Logger logger = LoggerFactory.getLogger(ProtocolSecurityController.class);
 
     private static final String V3_USER = "adminv3";
     private static final String V3_AUTH_PASS = "admin12345";
@@ -41,11 +44,13 @@ public class ProtocolSecurityController {
     @GetMapping("/security-demo")
     public ResponseEntity<?> runSecurityDemo(@RequestParam("ip") String targetIp) {
         if (!"10.0.1.2".equals(targetIp)) {
+            logger.warn("⚠️ FORBIDDEN: Security Demo requested for unauthorized IP: {}", targetIp);
             return ResponseEntity.status(403)
                     .body("Warning: Feature 'Packet Sniffing' for SNMPv3 is not configured on Agent " + targetIp
                             + ". Please select Agent 10.0.1.2.");
         }
 
+        logger.info("🛡️ Starting Security Packet Sniffing Demo for IP: {}", targetIp);
         Map<String, Map<String, String>> result = new HashMap<>();
         Snmp snmp = null;
 
@@ -78,7 +83,7 @@ public class ProtocolSecurityController {
 
             transport.listen();
             Address targetAddress = GenericAddress.parse("udp:" + targetIp + "/161");
-            
+
             // Sử dụng OID lấy thông tin mô tả hệ thống (sysDescr) để demo
             OID sysDescrOid = new OID("1.3.6.1.2.1.1.1.0");
 
@@ -132,7 +137,7 @@ public class ProtocolSecurityController {
             snmp.send(pduV3, targetV3);
             byte[] packV3 = interceptedPackets.isEmpty() ? new byte[0]
                     : interceptedPackets.get(interceptedPackets.size() - 1);
-            
+
             // Build kết quả trả về cho client, bao gồm cả dạng hex và ascii của gói tin
             Map<String, String> v1Data = new HashMap<>();
             v1Data.put("hex", toHex(packV1));
@@ -149,10 +154,12 @@ public class ProtocolSecurityController {
             v3Data.put("ascii", toAscii(packV3));
             result.put("v3", v3Data);
 
+            logger.info("✅ Security Demo Finished. Intercepted packets: v1={}, v2c={}, v3={}", packV1.length,
+                    packV2.length, packV3.length);
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("❌ Error during Security Demo Sniffing: ", e);
             return ResponseEntity.status(500).body(null);
         } finally {
             // Đảm bảo giải phóng port UDP ngay cả khi lỗi
