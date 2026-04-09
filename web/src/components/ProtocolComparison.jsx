@@ -102,7 +102,7 @@ const ProtocolComparison = ({ selectedIp }) => {
           onClick={handleRunBenchmark}
           loading={loading}
           size="large"
-          style={{ backgroundColor: '#4f46e5', flexShrink: 0 }}
+          style={{ backgroundColor: '#3b82f6', flexShrink: 0 }}
         >
           {loading ? 'Measuring network...' : 'Run Benchmark'}
         </Button>

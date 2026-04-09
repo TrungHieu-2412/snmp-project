@@ -111,15 +111,14 @@ const ControlPanel = ({ selectedIp }) => {
         <Tag color="blue">Supported Node</Tag>
       </div>
 
-      {/* Khu vực hiển thị Cảnh báo */}
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '20px' }}>
         {isUnderAttack && currentAlert ? (
           <Alert
             message={`WARNING: ${currentAlert.attackType.toUpperCase()} ATTACK DETECTED!`}
             description={`Target: ${currentAlert.ip} | Time: ${new Date(parseInt(currentAlert.time)).toLocaleTimeString('en-US')} | Message: ${currentAlert.message}`}
             type="error"
             showIcon
-            icon={<ShieldAlert size={28} style={{ marginTop: '12px' }} />}
+            icon={<ShieldAlert size={24} style={{ marginTop: '8px' }} />}
             action={
               <Button type="primary" danger icon={<Zap size={16} />} onClick={handleManualMitigation}>
                 Stop it now!
@@ -132,7 +131,7 @@ const ControlPanel = ({ selectedIp }) => {
             description="No abnormal network traffic detected from external agents."
             type="success"
             showIcon
-            icon={<ShieldCheck size={28} style={{ marginTop: '12px' }} />}
+            icon={<ShieldCheck size={24} style={{ marginTop: '8px' }} />}
           />
         )}
       </div>
