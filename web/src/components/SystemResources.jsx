@@ -1,5 +1,5 @@
 // SystemResources.jsx: Component hiển thị Biểu đồ đường vẽ mức tiêu thụ CPU & RAM, cùng Đồng hồ đo hiển thị trực quan các kết nối TCP hiện tại.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
@@ -10,6 +10,7 @@ import { dashboardAPI } from '../lib/api';
 const SystemResources = ({ selectedIp }) => {
   const [resourceData, setResourceData] = useState([]);
   const [tcpConnections, setTcpConnections] = useState(0);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,6 +42,11 @@ const SystemResources = ({ selectedIp }) => {
 
     return () => clearInterval(intervalId);
   }, [selectedIp]);
+
+  // Tự động cuộn đến cuối mỗi khi dữ liệu cập nhật
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+  }, [resourceData]);
 
   const maxTcpScale = 200;
   const gaugeData = [
@@ -74,18 +80,31 @@ const SystemResources = ({ selectedIp }) => {
               </div>
             </div>
           </div>
-          <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
-            <div style={{ width: `${chartWidth}px`, height: '200px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={resourceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="cpu" stroke="#ef4444" name="CPU Load (%)" strokeWidth={2} isAnimationActive={false} />
-                  <Line type="monotone" dataKey="ram" stroke="#8b5cf6" name="RAM Load (%)" strokeWidth={2} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
+          {/* Y-axis cố định + chart cuộn */}
+          <div style={{ display: 'flex', alignItems: 'stretch' }}>
+            {/* Cột trái: Y-axis cố định - dùng fixed dimension */}
+            <div style={{ width: '60px', flexShrink: 0, overflow: 'hidden' }}>
+              <LineChart width={60} height={200} data={resourceData} margin={{ top: 5, right: 0, left: 0, bottom: 30 }}>
+                <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} width={55} />
+                {/* Line ẩn để Recharts hiểu cấu trúc dữ liệu */}
+                <Line dataKey="cpu" stroke="transparent" dot={false} legendType="none" isAnimationActive={false} />
+                <Line dataKey="ram" stroke="transparent" dot={false} legendType="none" isAnimationActive={false} />
+              </LineChart>
+            </div>
+            {/* Cột phải: chart cuộn, ẩn Y-axis */}
+            <div ref={scrollRef} style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
+              <div style={{ width: `${chartWidth}px`, height: '200px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={resourceData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} hide />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="cpu" stroke="#ef4444" name="CPU Load (%)" strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="ram" stroke="#8b5cf6" name="RAM Load (%)" strokeWidth={2} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </div>

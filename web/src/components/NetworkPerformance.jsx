@@ -1,10 +1,12 @@
 // NetworkPerformance.jsx: Component hiển thị Hai biểu đồ (Throughput Mbps và PPS) thể hiện thông lượng mạng biến động liên tục theo thời gian thực.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { dashboardAPI } from '../lib/api';
 
 const NetworkPerformance = ({ selectedIp }) => {
   const [networkData, setNetworkData] = useState([]);
+  const scrollRef1 = useRef(null);
+  const scrollRef2 = useRef(null);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -36,7 +38,13 @@ const NetworkPerformance = ({ selectedIp }) => {
     const intervalId = setInterval(fetchData, 3000);
     return () => clearInterval(intervalId);
   }, [selectedIp]);
-  
+
+  // Tự động cuộn đến cuối mỗi khi dữ liệu cập nhật
+  useEffect(() => {
+    if (scrollRef1.current) scrollRef1.current.scrollLeft = scrollRef1.current.scrollWidth;
+    if (scrollRef2.current) scrollRef2.current.scrollLeft = scrollRef2.current.scrollWidth;
+  }, [networkData]);
+
   const chartWidth = Math.max(800, networkData.length * 60);
 
   return (
@@ -62,34 +70,31 @@ const NetworkPerformance = ({ selectedIp }) => {
             </div>
           </div>
         </div>
-        <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
-          <div style={{ width: `${chartWidth}px`, height: '200px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={networkData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="bandwidthUp" 
-                  stroke="#10b981" 
-                  name="Upload (Mbps)" 
-                  strokeWidth={2} 
-                  dot={false}
-                  isAnimationActive={false} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="bandwidthDown" 
-                  stroke="#3b82f6" 
-                  name="Download (Mbps)" 
-                  strokeWidth={2} 
-                  dot={false}
-                  isAnimationActive={false} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Y-axis cố định + chart cuộn */}
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          {/* Cột trái: Y-axis cố định - dùng fixed dimension, không ResponsiveContainer */}
+          <div style={{ width: '60px', flexShrink: 0, overflow: 'hidden' }}>
+            <LineChart width={60} height={200} data={networkData} margin={{ top: 5, right: 0, left: 0, bottom: 30 }}>
+              <YAxis tick={{ fontSize: 12 }} width={55} />
+              {/* Line ẩn để Recharts tính đúng domain */}
+              <Line dataKey="bandwidthUp" stroke="transparent" dot={false} legendType="none" isAnimationActive={false} />
+              <Line dataKey="bandwidthDown" stroke="transparent" dot={false} legendType="none" isAnimationActive={false} />
+            </LineChart>
+          </div>
+          {/* Cột phải: chart cuộn, ẩn Y-axis */}
+          <div ref={scrollRef1} style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
+            <div style={{ width: `${chartWidth}px`, height: '200px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={networkData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+                  <YAxis hide />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="bandwidthUp" stroke="#10b981" name="Upload (Mbps)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="bandwidthDown" stroke="#3b82f6" name="Download (Mbps)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>
@@ -111,34 +116,31 @@ const NetworkPerformance = ({ selectedIp }) => {
             </div>
           </div>
         </div>
-        <div style={{ width: '100%', overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
-          <div style={{ width: `${chartWidth}px`, height: '200px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={networkData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="ppsOut" 
-                  stroke="#f59e0b" 
-                  name="PPS Out" 
-                  strokeWidth={2} 
-                  dot={false}
-                  isAnimationActive={false} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="ppsIn" 
-                  stroke="#8b5cf6" 
-                  name="PPS In" 
-                  strokeWidth={2} 
-                  dot={false}
-                  isAnimationActive={false} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Y-axis cố định + chart cuộn */}
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          {/* Cột trái: Y-axis cố định - dùng fixed dimension */}
+          <div style={{ width: '60px', flexShrink: 0, overflow: 'hidden' }}>
+            <LineChart width={60} height={200} data={networkData} margin={{ top: 5, right: 0, left: 0, bottom: 30 }}>
+              <YAxis tick={{ fontSize: 12 }} width={55} />
+              {/* Line ẩn để Recharts tính đúng domain */}
+              <Line dataKey="ppsOut" stroke="transparent" dot={false} legendType="none" isAnimationActive={false} />
+              <Line dataKey="ppsIn" stroke="transparent" dot={false} legendType="none" isAnimationActive={false} />
+            </LineChart>
+          </div>
+          {/* Cột phải: chart cuộn, ẩn Y-axis */}
+          <div ref={scrollRef2} style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', paddingBottom: '10px' }}>
+            <div style={{ width: `${chartWidth}px`, height: '200px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={networkData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+                  <YAxis hide />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="ppsOut" stroke="#f59e0b" name="PPS Out" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="ppsIn" stroke="#8b5cf6" name="PPS In" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>
