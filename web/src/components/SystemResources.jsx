@@ -43,9 +43,18 @@ const SystemResources = ({ selectedIp }) => {
     return () => clearInterval(intervalId);
   }, [selectedIp]);
 
-  // Tự động cuộn đến cuối mỗi khi dữ liệu cập nhật
+  // Tự động cuộn đến cuối mỗi khi dữ liệu cập nhật (chỉ cuộn nếu người dùng đang ở cuối)
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    const threshold = 100; // Ngưỡng để xác định "đang ở cuối"
+    
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      // Nếu khoảng cách đến cuối biểu đồ nhỏ hơn threshold, coi như người dùng muốn auto-scroll
+      const isAtEnd = scrollWidth - scrollLeft - clientWidth < threshold;
+      if (isAtEnd) {
+        scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+      }
+    }
   }, [resourceData]);
 
   const maxTcpScale = 200;
@@ -100,8 +109,8 @@ const SystemResources = ({ selectedIp }) => {
                     <XAxis dataKey="time" tick={{ fontSize: 12 }} />
                     <YAxis domain={[0, 100]} hide />
                     <Tooltip />
-                    <Line type="monotone" dataKey="cpu" stroke="#ef4444" name="CPU Load (%)" strokeWidth={2} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="ram" stroke="#8b5cf6" name="RAM Load (%)" strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="cpu" stroke="#ef4444" name="CPU Load (%)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="ram" stroke="#8b5cf6" name="RAM Load (%)" strokeWidth={2} dot={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

@@ -131,5 +131,17 @@ export const dashboardAPI = {
       console.error("API checkIpsSupport error:", error);
       return false;
     }
-  }
-};
+  },
+
+  // Lấy chỉ số mạng của tất cả Agent (inPps, outPps, downKbps, upKbps) để vẽ sơ đồ Topology
+  getTopologyMetrics: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/metrics`);
+      if (!response.ok) throw new Error('Error fetching topology metrics');
+      return await response.json();
+    } catch (error) {
+      console.error("API getTopologyMetrics error:", error);
+      return null;
+    }
+  },
+};

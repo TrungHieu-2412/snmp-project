@@ -67,10 +67,10 @@ const SecurityAnalyzer = ({ selectedIp }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
         <div>
           <h2 style={{ fontSize: '18px', color: '#1f2937', margin: 0 }}>
-            Security Packet Sniffer — Agent: {selectedIp || 'Not selected'}
+            Security Packet Sniffer - Agent: {selectedIp || 'Not selected'}
           </h2>
-          <p style={{ color: '#6b7280', fontSize: '13px', margin: '5px 0 0 0' }}>
-            Captures and analyzes raw UDP Response packets (like Wireshark). Requesting sysDescr (OS info) OID.
+          <p style={{ color: '#6b7280', fontSize: '13px', margin: '3px 0 0 0' }}>
+            Captures and analyzes raw UDP Response packets. Requesting sysDescr (OS info) OID.
           </p>
         </div>
         <Button
@@ -86,7 +86,7 @@ const SecurityAnalyzer = ({ selectedIp }) => {
       </div>
 
       {!data && (
-        <div style={{ height: '180px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
+        <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
           <span style={{ color: '#9ca3af' }}>Click "Capture Packets" to extract payload from network...</span>
         </div>
       )}

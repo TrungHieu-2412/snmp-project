@@ -1,7 +1,7 @@
 // ProtocolComparison.jsx: Vẽ Summary Table + biểu đồ Benchmark so sánh SNMPv1, v2c và v3.
 import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { Button, Spin, Tag, Table, Divider, message } from 'antd';
+import { Button, Tag, Table, Divider, message } from 'antd';
 import { Play, ShieldCheck, ShieldAlert, Shield } from 'lucide-react';
 import { dashboardAPI } from '../lib/api';
 
@@ -110,7 +110,7 @@ const ProtocolComparison = ({ selectedIp }) => {
 
       {/* Empty state */}
       {data.length === 0 && (
-        <div style={{ height: '180px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
+        <div style={{ height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
           <span style={{ color: '#9ca3af' }}>Click "Run Benchmark" to start the real network test...</span>
         </div>
       )}

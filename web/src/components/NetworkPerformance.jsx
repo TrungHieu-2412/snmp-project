@@ -39,10 +39,21 @@ const NetworkPerformance = ({ selectedIp }) => {
     return () => clearInterval(intervalId);
   }, [selectedIp]);
 
-  // Tự động cuộn đến cuối mỗi khi dữ liệu cập nhật
+  // Tự động cuộn đến cuối mỗi khi dữ liệu cập nhật (chỉ cuộn nếu người dùng đang ở cuối)
   useEffect(() => {
-    if (scrollRef1.current) scrollRef1.current.scrollLeft = scrollRef1.current.scrollWidth;
-    if (scrollRef2.current) scrollRef2.current.scrollLeft = scrollRef2.current.scrollWidth;
+    const threshold = 100; // Ngưỡng để xác định "đang ở cuối" (đủ cho 1-2 điểm dữ liệu mới)
+    
+    if (scrollRef1.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef1.current;
+      const isAtEnd = scrollWidth - scrollLeft - clientWidth < threshold;
+      if (isAtEnd) scrollRef1.current.scrollLeft = scrollRef1.current.scrollWidth;
+    }
+    
+    if (scrollRef2.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef2.current;
+      const isAtEnd = scrollWidth - scrollLeft - clientWidth < threshold;
+      if (isAtEnd) scrollRef2.current.scrollLeft = scrollRef2.current.scrollWidth;
+    }
   }, [networkData]);
 
   const chartWidth = Math.max(800, networkData.length * 60);

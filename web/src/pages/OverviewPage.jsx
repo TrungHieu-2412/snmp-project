@@ -6,26 +6,16 @@ import ControlPanel from '../components/ControlPanel';
 import EvaluationLogs from '../components/EvaluationLogs';
 
 const OverviewPage = () => {
-  const { ips, selectedIp } = useOutletContext();
+  const { selectedIp } = useOutletContext();
 
+  // Luôn render 4 component với selectedIp hiện tại.
   return (
-    <>
-      {ips.map(agent => (
-        <div 
-          key={`overview-grid-${agent.ip}`}
-          style={{ 
-            display: selectedIp === agent.ip ? 'grid' : 'none', 
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', 
-            gap: '20px' 
-          }}
-        >
-          <NetworkPerformance selectedIp={agent.ip} />
-          <SystemResources selectedIp={agent.ip} />
-          <ControlPanel selectedIp={agent.ip} />
-          <EvaluationLogs selectedIp={agent.ip} />
-        </div>
-      ))}
-    </>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px' }}>
+      <NetworkPerformance selectedIp={selectedIp} />
+      <SystemResources selectedIp={selectedIp} />
+      <ControlPanel selectedIp={selectedIp} />
+      <EvaluationLogs selectedIp={selectedIp} />
+    </div>
   );
 };
 

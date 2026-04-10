@@ -39,8 +39,6 @@ const MainLayout = () => {
     setSearchParams({ ip: newIp });
   };
 
-  const currentSysName = ips.find(a => a.ip === selectedIp)?.sysName || '';
-
   return (
     <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       <TopHeader 
@@ -50,17 +48,7 @@ const MainLayout = () => {
       />
 
       <div style={{ padding: '20px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h1 style={{ fontSize: '28px', lineHeight: '1.5', margin: 0, color: '#1f2937' }}>
-            SNMP MONITORING & IDS SYSTEM (IDPS)
-          </h1>
-          <p style={{ color: '#6b7280', fontSize: '16px', marginTop: '3px' }}>
-            Network Performance Assessment Dashboard | Monitoring Device: <strong>{selectedIp ? `${selectedIp} - ${currentSysName}` : 'Not configured'}</strong>
-          </p>
-        </div>
-
         <Outlet context={{ ips, selectedIp }} />
-        
       </div>
     </div>
   );
