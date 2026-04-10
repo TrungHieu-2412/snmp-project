@@ -51,6 +51,9 @@ public class TrapReceiverService implements CommandResponder {
     private int mitigationDelay = 10; // Thời gian delay trước khi chặn (giây)
     private boolean isAutoMode = true; // true = Auto-IPS tự chặn, false = chờ thủ công
 
+    // Cờ theo dõi trạng thái chặn để triệt tiêu "Bóng ma TRAP"
+    private ConcurrentHashMap<String, Boolean> activeMitigations = new ConcurrentHashMap<>();
+
     // Cấu hình cổng lắng nghe TRAP (10162) để nhận các cảnh báo từ Agent đẩy về.
     @PostConstruct
     public void startListening() {
@@ -62,7 +65,7 @@ public class TrapReceiverService implements CommandResponder {
             snmp.addCommandResponder(this);
 
             transport.listen();
-            logger.info("💡NMS TRAP: Listening for Trap packet at port {}", TRAP_LISTEN_ADDRESS);
+            logger.info("✅ NMS TRAP: Listening for TRAP packet at port {}", TRAP_LISTEN_ADDRESS);
 
         } catch (IOException e) {
             logger.error("❌ Trap Receiver initialization error: ", e);
@@ -78,15 +81,24 @@ public class TrapReceiverService implements CommandResponder {
 
             // Chỉ xử lý TRAP v2 (PDU.TRAP) hoặc TRAP v1 (PDU.V1TRAP), bỏ qua các PDU khác
             if (pduType == PDU.TRAP || pduType == PDU.V1TRAP) {
-                logger.warn("⚠️ SECURITY WARNING: Received TRAP packet from [{}]", peerAddress);
 
                 // Duyệt qua tất cả các Variable Binding trong TRAP để tìm giá trị đáng nghi vấn
                 event.getPDU().getVariableBindings().forEach(vb -> {
                     String value = vb.getVariable().toString();
 
-                    // Nếu payload chứa chuỗi "ASYN_FLOOD_DETECTED", xác nhận là tấn công thật
+                    // Nếu payload chứa chuỗi "SYN_FLOOD_DETECTED", xác nhận là tấn công thật
                     if (value.contains("SYN_FLOOD_DETECTED")) {
                         String targetIp = peerAddress.split("/")[0]; // Trích xuất chỉ phần IP (bỏ port)
+
+                        // Nếu IP này đang được đếm ngược hoặc xử lý rồi -> Vứt bỏ TRAP này!
+                        if (activeMitigations.getOrDefault(targetIp, false)) {
+                            return;
+                        }
+
+                        // Đánh dấu IP này bắt đầu được đưa vào quy trình xử lý (Khóa)
+                        activeMitigations.put(targetIp, true);
+
+                        logger.warn("⚠️ SECURITY WARNING: Received TRAP packet from [{}]", peerAddress);
                         int currentDelay = this.mitigationDelay; // Chụp lại delay hiện tại (tránh race condition)
 
                         // Tạo bản ghi đánh giá (EvaluationLog): ghi lại thời gian bắt đầu, loại tấn công, delay
@@ -94,7 +106,7 @@ public class TrapReceiverService implements CommandResponder {
                         log.put("key", String.valueOf(logIdCounter++));
                         log.put("startTime", new SimpleDateFormat("HH:mm:ss").format(new Date()));
                         log.put("attackType", "TCP SYN Flood");
-                        log.put("delay", "10s");
+                        log.put("delay", currentDelay + "s");
                         log.put("status", "Processing...");
                         evaluationLogs.add(log);
 
@@ -114,7 +126,7 @@ public class TrapReceiverService implements CommandResponder {
                                     "⌛ The system will automatically activate the Iptables shield after {} seconds...",
                                     currentDelay);
 
-                            // Chạy task chặn bất đồng bộ sau "currentDelay" giây (không chặn luồng xử lý TRAP)
+                            // Chạy task chặn bất đồng bộ sau "currentDelay" giây
                             CompletableFuture.runAsync(() -> {
                                 boolean success = triggerMitigationSet(targetIp); // Gửi SNMP SET
 
@@ -134,13 +146,22 @@ public class TrapReceiverService implements CommandResponder {
                                     alert.put("status", "Resolved");
                                 }
 
+                                // Gỡ bỏ cờ khóa để hệ thống có thể nhận TRAP lần tiếp theo sau 15s.
+                                CompletableFuture.delayedExecutor(15, TimeUnit.SECONDS).execute(() -> {
+                                    activeMitigations.put(targetIp, false);
+                                });
+
                             }, CompletableFuture.delayedExecutor(currentDelay, TimeUnit.SECONDS));
                         } else {
                             // Chế độ Thủ công: chỉ log cảnh báo, không tự gửi SET
-                            // Alert vẫn giữ trạng thái Processing
                             logger.warn("⚠️ Auto-IPS is Disabled. Waiting for manual intervention...");
                             log.put("status", "Manual Pending");
                             alert.put("status", "Processing...");
+
+                            // Trong chế độ thủ công, cũng giải phóng khóa sau 30 giây
+                            CompletableFuture.delayedExecutor(30, TimeUnit.SECONDS).execute(() -> {
+                                activeMitigations.put(targetIp, false);
+                            });
                         }
                     }
                 });

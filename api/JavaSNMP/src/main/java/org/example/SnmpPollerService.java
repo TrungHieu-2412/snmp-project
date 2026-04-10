@@ -82,7 +82,7 @@ public class SnmpPollerService {
             addDevice("10.0.1.2");
             addDevice("10.0.2.2");
 
-            logger.info("🔎 NMS POLLER: Started Multi-Agent Polling Service!");
+            logger.info("✅ NMS POLLER: Started Multi-Agent Polling Service!");
         } catch (IOException e) {
             logger.error("❌ SNMP Poller Initialization Error: ", e);
         }
