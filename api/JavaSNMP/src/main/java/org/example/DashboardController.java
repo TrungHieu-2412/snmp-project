@@ -82,11 +82,4 @@ public class DashboardController {
         boolean isSupported = "10.0.1.2".equals(ip);
         return ResponseEntity.ok(isSupported);
     }
-    
-    // Cung cấp API GET dữ liệu Topology trực tiếp từ bộ nhớ đệm (Cache) của PollerService
-    // Dữ liệu này sẽ được Component NetworkTopology.jsx trên ReactJS gọi mỗi 3 giây
-    @GetMapping("/network/topology")
-    public ResponseEntity<Map<String, Map<String, Object>>> getNetworkTopology() {
-        return ResponseEntity.ok(pollerService.getAllMetrics());
-    }
 }
