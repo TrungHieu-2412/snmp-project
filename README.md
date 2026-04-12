@@ -61,7 +61,7 @@ Hệ thống này là một **nền tảng giám sát mạng và bảo mật end
 
 ## 🏗️ Kiến trúc Hệ thống
 
-![SNMP System Architecture](assets/images/system-architecture.png)
+![SNMP System Architecture](web/src/assets/SNMP-Architecture.png)
 
 ---
 
