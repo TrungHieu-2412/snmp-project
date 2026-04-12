@@ -369,13 +369,13 @@ Gửi request SNMP GET (v2c) ───── (UDP:161) ─────┐
       ▲                                             │
       │                                             │ GET (UDP:161)
       │                                             ▼
-      │    ┌─── Truy vấn GET (UDP:161) ─────► [VM1 - Agent/Victim]
-      │    │                                        │
-      │    │  - SNMPv1: 50 × GETNEXT (Tuần tự)      │
-      │    │  - SNMPv2c: 1 × GETBULK (50 OIDs)      │
-      │    │  - SNMPv3: 1 × GETBULK (Auth+Priv)     │
-      │    │                                        │
-      │    └─── Response (PDU) ◄────────────────────┘
+      │                                       [VM1 - Agent/Victim]
+      │                                             │
+      │        - SNMPv1: 50 × GETNEXT (Tuần tự)     │
+      │        - SNMPv2c: 1 × GETBULK (50 OIDs)     │
+      │        - SNMPv3: 1 × GETBULK (Auth+Priv)    │
+      │                                             │
+      │        Response (PDU) ◄─────────────────────┘
       │             │
       │             │ Xử lý tại NMS:
       │             │  - Đo thời gian hoàn thành (ms)
@@ -393,13 +393,13 @@ Gửi request SNMP GET (v2c) ───── (UDP:161) ─────┐
       ▲                                             │
       │                                             │ GET (UDP:161)
       │                                             ▼
-      │    ┌─── Truy vấn GET (UDP:161) ────► [VM1 - Agent/Victim]
-      │    │                                        │
-      │    │  - Sniff raw UDP payload               │
-      │    │  - SNMPv1/v2c: Plaintext PDU           │
-      │    │  - SNMPv3: Encrypted ScopedPDU         │
-      │    │                                        │
-      │    └─── Response (PDU) ◄────────────────────┘
+      │                                      [VM1 - Agent/Victim]
+      │                                             │
+      │        - Sniff raw UDP payload              │
+      │        - SNMPv1/v2c: Plaintext PDU          │
+      │        - SNMPv3: Encrypted ScopedPDU        │
+      │                                             │
+      │        Response (PDU) ◄─────────────────────┘
       │             │
       │             │ Xử lý tại NMS:
       │             │  - Chuyển byte[] sang định dạng Hex
