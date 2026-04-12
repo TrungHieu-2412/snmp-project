@@ -326,36 +326,119 @@ tail -f app.log | grep -E "TRAP|SET|MITIGATION"
 
 ---
 
-## 🔐 Luồng Bảo mật Auto-IPS
+## 📊 Luồng Polling Metric (SNMP GET)
 
 ```
-VM1 snmpd: monitor tcp.currEstab > 2000
-           │
-           │ (5 giây polling một lần)
-           ▼
-     Phát hiện SYN Flood?
-           │
-           ├── YES -> Gửi SNMP TRAP v2c -> VM2:10162
-           │              (OID: tcpAttemptFails)
-           │
-VM2 TrapReceiverService: nhận TRAP
-           │
-           ├── Auto Mode ON? ──────────────────────────┐
-           │                                           │
-           │ YES                                       │ NO
-           ▼                                           ▼
-  Chờ <delay> giây           Admin nhấn "Activate Shield" trên UI
-           │                                           │
-           └───────────────────────────────────────────┘
-                              │
-                              ▼
-              Gửi SNMP SET -> VM1:161
-              OID: 1.3.6.1.4.1.9999.1.0 = 1
-                              │
-                              ▼
-              VM1 snmpd thực thi block_attacker.sh
-              -> iptables -A INPUT -p tcp --syn -j DROP
-              -> Ghi log: /var/log/snmp_mitigation.log
+[VM2 - NMS Manager]
+      │
+      │ (Định kỳ 3 giây/lần)
+      ▼
+Gửi request SNMP GET (v2c) ───── (UDP:161) ─────┐
+      │                                         │
+      │  - CPU OID (UCD-SNMP)                   │
+      │  - RAM OID (UCD-SNMP)                   │
+      │  - Bandwidth OIDs (MIB-II)              │
+      │  - TCP OID (MIB-II)                     │
+      ▼                                         │
+[VM1 - Agent/Victim] ◄──────────────────────────┘
+      │
+      │  - Đọc giá trị từ Kernel
+      │  - Trả về PDU Response ─── (UDP:161) ───┐
+      │                                         │
+      ▼                                         │
+[VM2 - NMS Manager] ◄───────────────────────────┘
+      │
+      │  - Tính toán Delta (Băng thông, PPS)
+      │  - Chuyển đổi công thức (Kbps, %)
+      │  - Lưu dữ liệu vào ConcurrentHashMap (RAM)
+      ▼
+[React Frontend] ◄── REST /api/metrics ───────┘
+```
+
+---
+
+## 🔐 Luồng Bảo mật Auto-IPS (SNMP TRAP & SET)
+
+```
+[VM3 - Attacker] ─── Tấn công (hping3)
+      │
+      │ SYN Flood (TCP: 80)
+      ▼
+[VM1 - Agent/Victim]
+      │
+      │  - Phát hiện tấn công: monitor tcp.currEstab > 2000
+      │  - Gửi TRAP về NMS Manager  ────────────────┐
+      │                                             │
+      ▼                                             │
+[VM2 - NMS Manager] ◄──── SNMP TRAP (UDP:10162) ────┘
+      │
+      │  - Nhận TRAP tại TrapReceiverService
+      │  - Kiểm tra Chế độ Auto-IPS
+      │  - Đợi <delay> giây (nếu có)
+      │  - Gửi lệnh SNMP SET (v2c) ─────────────────┐
+      │                                             │
+      │    OID: 1.3.6.1.4.1.9999.1.0                │
+      │    Value: 1 (Activate)                      │
+      ▼                                             │
+[VM1 - Agent/Victim] ◄───── Command (UDP:161) ──────┘
+      │
+      │  - snmpd gọi block_attacker.sh
+      │  - Thực thi: iptables -A INPUT -s 10.0.2.2 -j DROP
+      ▼
+[VM2 - NMS Manager] ◄──────── Status Update ─────────────┘
+      │
+      │  - Ghi Evaluation Log (Trước/Sau)
+      │  - Cập nhật Alert trên Dashboard
+      ▼
+[React Frontend] ◄──── REST /api/alerts ────────┘
+```
+
+---
+
+## 🚀 Luồng Benchmark Hiệu năng (SNMPv1 vs v2c vs v3)
+
+```
+[React Frontend] ──── Trigger Benchmark ────► [VM2 - NMS Manager]
+      ▲                                             │
+      │                                             │ GET (UDP:161)
+      │                                             ▼
+      │    ┌─── Truy vấn GET (UDP:161) ─────► [VM1 - Agent/Victim]
+      │    │                                        │
+      │    │  - SNMPv1: 50 × GETNEXT (Tuần tự)      │
+      │    │  - SNMPv2c: 1 × GETBULK (50 OIDs)      │
+      │    │  - SNMPv3: 1 × GETBULK (Auth+Priv)     │
+      │    │                                        │
+      │    └─── Response (PDU) ◄────────────────────┘
+      │             │
+      │             │ Xử lý tại NMS:
+      │             │  - Đo thời gian hoàn thành (ms)
+      │             │  - Tính Throughput (oids/giây)
+      │             ▼
+      └────── Kết quả so sánh (JSON) ───────────────┘
+```
+
+---
+
+## 🛡️ Luồng Phân tích Bảo mật (Packet Sniffer)
+
+```
+[React Frontend] ──── Trigger Security ────► [VM2 - NMS Manager]
+      ▲                                             │
+      │                                             │ GET (UDP:161)
+      │                                             ▼
+      │    ┌─── Truy vấn GET (UDP:161) ────► [VM1 - Agent/Victim]
+      │    │                                        │
+      │    │  - Sniff raw UDP payload               │
+      │    │  - SNMPv1/v2c: Plaintext PDU           │
+      │    │  - SNMPv3: Encrypted ScopedPDU         │
+      │    │                                        │
+      │    └─── Response (PDU) ◄────────────────────┘
+      │             │
+      │             │ Xử lý tại NMS:
+      │             │  - Chuyển byte[] sang định dạng Hex
+      │             │  - Chuyển byte[] sang ASCII (Mô tả nội dung)
+      │             ▼
+      └────── Kết quả phân tích (JSON) ───────────────┘
 ```
 
 ---
