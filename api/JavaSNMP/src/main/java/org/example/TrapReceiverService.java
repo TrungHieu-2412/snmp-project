@@ -98,7 +98,7 @@ public class TrapReceiverService implements CommandResponder {
                         // Đánh dấu IP này bắt đầu được đưa vào quy trình xử lý (Khóa)
                         activeMitigations.put(targetIp, true);
 
-                        logger.warn("⚠️ SECURITY WARNING: Received TRAP packet from [{}]", peerAddress);
+                        logger.warn("⚠️ SECURITY WARNING: Received TRAP packet from [{}]", peerAddress);                
                         int currentDelay = this.mitigationDelay; // Chụp lại delay hiện tại (tránh race condition)
 
                         // Tạo bản ghi đánh giá (EvaluationLog): ghi lại thời gian bắt đầu, loại tấn công, delay

@@ -59,6 +59,7 @@ public class ProtocolPerformanceController {
         Snmp snmp = null;
 
         try {
+            
             // Tạo kênh truyền UDP (không gắn port cụ thể, dùng cổng ngẫu nhiên phía client)
             TransportMapping<? extends Address> transport = new DefaultUdpTransportMapping();
             snmp = new Snmp(transport);
@@ -81,7 +82,7 @@ public class ProtocolPerformanceController {
 
             // SNMPv1: Sử dụng PDU GETNEXT để liên tục truy vấn OID tiếp theo, tổng cộng 50 lần
             CommunityTarget<Address> targetV1 = new CommunityTarget<>();
-            targetV1.setCommunity(new OctetString(COMMUNITY)); // Sử dụng community string "public" đã cấu hình trên Agent
+            targetV1.setCommunity(new OctetString(COMMUNITY)); // Sử dụng community "public" (Read-Only)
             targetV1.setAddress(targetAddress);
             targetV1.setRetries(1);
             targetV1.setTimeout(1500);

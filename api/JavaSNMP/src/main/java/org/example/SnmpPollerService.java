@@ -23,12 +23,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class SnmpPollerService {
-    private List<String> targetIps = new CopyOnWriteArrayList<>(); // Danh sách IP Agent đang được giám sát
-    private static final Logger logger = LoggerFactory.getLogger(SnmpPollerService.class);
-
     private Snmp snmp; // Đối tượng SNMP4J được tái sử dụng cho mọi polling
     private static final int SNMP_PORT = 161; // Cổng SNMP mặc định
-    private static final String RO_COMMUNITY = "public"; // Community string read-only, phải khớp snmpd.conf
+    private static final String RO_COMMUNITY = "public"; // Community string read-only, khớp với snmpd.conf
 
     // CÁC OID CẦN LẤY TỪ AGENT (chuẩn MIB-II + UCD-SNMP)
     // ifInOctets / ifOutOctets: số byte đến/ra interface
@@ -61,10 +58,15 @@ public class SnmpPollerService {
         long lastTime = 0; // Thời điểm polling lần cuối (ms)
     }
 
-    // Bản đồ trạng thái theo IP
+    private static final Logger logger = LoggerFactory.getLogger(SnmpPollerService.class);
+
+    // Danh sách IP Agent đang được giám sát
+    private List<String> targetIps = new CopyOnWriteArrayList<>();
+
+    // Bản đồ lưu trữ trạng thái lần poll trước của từng IP để tính toán delta cho băng thông và PPS
     private Map<String, VmState> states = new ConcurrentHashMap<>();
 
-    // Bản đồ lưu trữ số liệu Metrics mới nhất của từng IP -> được API trả xuống FE
+    // Bản đồ lưu trữ số liệu Metrics mới nhất của từng IP
     private Map<String, Map<String, Object>> allMetrics = new ConcurrentHashMap<>();
 
     // Khởi tạo dịch vụ SNMP, lắng nghe cổng UDP và tự động thêm 2 VM mặc định vào danh sách giám sát.
@@ -123,10 +125,10 @@ public class SnmpPollerService {
             PDU pdu = new PDU();
 
             // Thứ tự thêm OID vào PDU phải khớp với thứ tự đọc response ở bên dưới (index 0–8)
-            pdu.add(new VariableBinding(new OID(OID_IN_OCTETS))); // [0] byte đện tới (cứng dồn)
-            pdu.add(new VariableBinding(new OID(OID_OUT_OCTETS))); // [1] byte đi ra  (cứng dồn)
-            pdu.add(new VariableBinding(new OID(OID_IN_PKTS))); // [2] gói đện (cứng dồn)
-            pdu.add(new VariableBinding(new OID(OID_OUT_PKTS))); // [3] gói đi  (cứng dồn)
+            pdu.add(new VariableBinding(new OID(OID_IN_OCTETS))); // [0] byte đi tới
+            pdu.add(new VariableBinding(new OID(OID_OUT_OCTETS))); // [1] byte đi ra
+            pdu.add(new VariableBinding(new OID(OID_IN_PKTS))); // [2] gói đện
+            pdu.add(new VariableBinding(new OID(OID_OUT_PKTS))); // [3] gói đi
             pdu.add(new VariableBinding(new OID(OID_CPU_IDLE))); // [4] % CPU nhàn
             pdu.add(new VariableBinding(new OID(OID_RAM_TOTAL))); // [5] tổng RAM (KB)
             pdu.add(new VariableBinding(new OID(OID_RAM_AVAIL))); // [6] RAM còn trống (KB)
@@ -163,7 +165,7 @@ public class SnmpPollerService {
                 if (!sysDescrStr.equals("noSuchObject")) {
                     String[] parts = sysDescrStr.split(" ");
                     if (parts.length >= 2) {
-                        sysName = parts[0] + " " + parts[1]; // Lấy 2 phần đầu: "Linux snmp-vm1..."
+                        sysName = parts[0] + " " + parts[1];
                     } else {
                         sysName = sysDescrStr;
                     }

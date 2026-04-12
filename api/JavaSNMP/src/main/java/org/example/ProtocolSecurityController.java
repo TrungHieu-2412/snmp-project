@@ -40,6 +40,9 @@ public class ProtocolSecurityController {
     private static final String V3_PRIV_PASS = "admin12345";
     private static final String COMMUNITY = "public";
 
+    // OID chuẩn để lấy thông tin mô tả hệ thống (sysDescr)
+    private static final String OID_SYS_DESCR = "1.3.6.1.2.1.1.1.0";
+
     // Endpoint thực hiện một bài demo để minh họa sự khác biệt về bảo mật giữa SNMPv1/v2c (không mã hóa) và SNMPv3 (có mã hóa)
     @GetMapping("/security-demo")
     public ResponseEntity<?> runSecurityDemo(@RequestParam("ip") String targetIp) {
@@ -85,7 +88,7 @@ public class ProtocolSecurityController {
             Address targetAddress = GenericAddress.parse("udp:" + targetIp + "/161");
 
             // Sử dụng OID lấy thông tin mô tả hệ thống (sysDescr) để demo
-            OID sysDescrOid = new OID("1.3.6.1.2.1.1.1.0");
+            OID sysDescrOid = new OID(OID_SYS_DESCR);
 
             // SNMPv1: Gửi một PDU GET đơn giản và chặn gói tin để xem nội dung không mã hóa
             interceptedPackets.clear();
