@@ -61,40 +61,7 @@ Hệ thống này là một **nền tảng giám sát mạng và bảo mật end
 
 ## 🏗️ Kiến trúc Hệ thống
 
-```
-                     ┌──────────────────────────────────────┐
-                     │          Google Cloud Platform       │
-                     │                                      │
-                     │  ┌───────────────────────────────┐   │
-                     │  │  VM2 - NMS Manager (10.0.1.3) │   │
-                     │  │  Spring Boot :8080            │   │
-                     │  │  ┌─────────────────────────┐  │   │
-                     │  │  │ SnmpPollerService       │  │   │
-                     │  │  │ GET mỗi 3s -> /metrics  │  │   │
-                     │  │  ├─────────────────────────┤  │   │
-                     │  │  │ TrapReceiverService     │  │   │
-                     │  │  │ Lắng nghe TRAP :10162   │  │   │
-                     │  │  │ -> SET block_attacker.sh│  │   │
-                     │  │  ├─────────────────────────┤  │   │
-                     │  │  │ DashboardController     │  │   │
-                     │  │  │ REST API /api/*         │  │   │
-                     │  │  └─────────────────────────┘  │   │
-                     │  └───────┬───────────────────────┘   │
-                     │          │ SNMP GET/SET (UDP:161)    │
-                     │          │ TRAP (UDP:10162)          │
-                     │    ┌─────▼──────┐   ┌────────────┐   │
-                     │    │ VM1 Agent  │   │ VM3 Attcker│   │
-                     │    │ 10.0.1.2   │   │ 10.0.2.2   │   │
-                     │    │ Net-SNMP   │◄──│ hping3     │   │
-                     │    │ snmpd      │   │ SYN Flood  │   │
-                     │    │ iptables   │   └────────────┘   │
-                     │    └────────────┘                    │
-                     └──────────────────────────────────────┘
-                                      │
-                              React Dashboard
-                              Vite Dev / Build
-                              VITE_API_BASE -> VM2:8080
-```
+![SNMP System Architecture](assets/images/system-architecture.png)
 
 ---
 
