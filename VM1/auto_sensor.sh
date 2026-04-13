@@ -10,7 +10,7 @@ THRESHOLD_TCP=5000
 THRESHOLD_UDP=5000
 THRESHOLD_TOTAL=15000
 
-# Tự động lấy tên card mạng chính đang kết nối Internet 
+# Tự động lấy tên card mạng chính đang kết nối Internet
 INTERFACE=$(ip route | grep default | awk '{print $5}')
 
 echo "🛡️ Auto Sensor IDPS is running on interface $INTERFACE. Waiting for attacks..."
@@ -36,7 +36,7 @@ while true; do
     echo -ne "Monitoring... Delta [TCP: $DELTA_TCP | UDP: $DELTA_UDP | PKT: $DELTA_PKT]     \r"
 
     ATTACK_DETECTED=""
-    
+
     # Phân loại tấn công dựa trên Delta
     if [ "$DELTA_TCP" -gt "$THRESHOLD_TCP" ]; then
         ATTACK_DETECTED="SYN_FLOOD_DETECTED"

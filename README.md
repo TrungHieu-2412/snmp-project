@@ -88,7 +88,7 @@ Hệ thống này là một **nền tảng giám sát mạng và bảo mật end
 | --- | -------------- | ----------- | ------------------------- | ----------------------------------------- |
 | VM1 | Agent / Victim | 10.0.1.2    | TCP:80, UDP:161           | Chạy Net-SNMP Agent, mục tiêu bị tấn công |
 | VM2 | NMS Manager    | 10.0.1.3    | TCP:8080, UDP:162, :10162 | Spring Boot NMS, nhận GET, TRAP, gửi SET  |
-| VM3 | Attacker       | 10.0.2.2    | TCP:22, ICMP              | Mô phỏng tấn công SYN Flood               |
+| VM3 | Attacker       | 10.0.2.2    | TCP:22, ICMP              | Mô phỏng tấn công SYN, UDP, ICMP Flood    |
 
 ---
 
@@ -102,10 +102,10 @@ snmp-project/
 │   └── block_attacker.sh              # Script kích hoạt iptables theo ID loại tấn công
 │
 ├── api/
-│   └── JavaSNMP/                       # NMS Backend (Spring Boot)
+│   └── JavaSNMP/                         # NMS Backend (Spring Boot)
 │       └── src/main/java/org/example/
-│           ├── Main.java               # Entry point - khởi động Spring Boot App
-│           ├── SnmpPollerService.java  # GET định kỳ 3s -> CPU, RAM, BW, PPS, TCP
+│           ├── Main.java                 # Entry point - khởi động Spring Boot App
+│           ├── SnmpPollerService.java    # GET định kỳ 3s -> CPU, RAM, BW, PPS, TCP
 │           ├── TrapReceiverService.java  # Nhận TRAP cảnh báo -> gửi SET phản công
 │           ├── DashboardController.java  # REST API /api/* cho Frontend
 │           ├── ProtocolPerformanceController.java  # Benchmark SNMPv1/v2c/v3
@@ -267,7 +267,7 @@ sudo hping3 -S --flood -p 80 10.0.1.2
 sudo hping3 --udp --flood -p 53 10.0.1.2
 
 # 3. Tấn công ICMP (Ping) Flood
-sudo hping3 -1 --flood 10.0.1.2
+sudo hping3 --icmp --flood 10.0.1.2
 
 # Theo dõi phản ứng trên VM1
 sudo journalctl -u autosensor -f -a
