@@ -1,5 +1,5 @@
 #!/bin/bash
-# AUTO SENSOR IDPS SCRIPT - BẮT GÓI TIN VÀ GỬI SNMP TRAP
+# Script tự động phát hiện và gửi SNMP Trap về NMS (VM2)
 
 # IP của NMS Manager (VM2) và cổng Trap
 MANAGER_IP="10.0.1.3:10162"
@@ -18,7 +18,7 @@ echo "🛡️ Auto Sensor IDPS is running on interface $INTERFACE. Waiting for a
 # Lấy giá trị khởi tạo ban đầu
 PREV_TCP=$(cat /proc/net/snmp | grep Tcp: | awk 'NR==2 {print $11}') # Tổng tất cả các gói tin TCP bay vào
 PREV_UDP=$(cat /proc/net/snmp | grep Udp: | awk 'NR==2 {print $2 + $3 + $4}')  # Số lượng gói UDP nhận vào ($2 là UDP hợp lệ, $3 là UDP đập vào port đóng, $4 là UDP bị lỗi)
-PREV_PKT=$(cat /sys/class/net/$INTERFACE/statistics/rx_packets)      # Tổng số gói tin nhận vào
+PREV_PKT=$(cat /sys/class/net/$INTERFACE/statistics/rx_packets) # Tổng số gói tin nhận vào
 
 while true; do
     sleep 1
@@ -60,8 +60,8 @@ while true; do
         sleep 5
 
         # Cập nhật giá trị sau khi nghỉ để tránh tính sai Delta ở vòng lặp kế tiếp
-        CURR_TCP=$(cat /proc/net/snmp | grep Tcp: | awk 'NR==2 {print $10}')
-        CURR_UDP=$(cat /proc/net/snmp | grep Udp: | awk 'NR==2 {print $2}')
+        CURR_TCP=$(cat /proc/net/snmp | grep Tcp: | awk 'NR==2 {print $11}')
+        CURR_UDP=$(cat /proc/net/snmp | grep Udp: | awk 'NR==2 {print $2 + $3 + $4}')
         CURR_PKT=$(cat /sys/class/net/$INTERFACE/statistics/rx_packets)
     fi
 
