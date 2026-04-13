@@ -53,7 +53,7 @@ const ControlPanel = ({ selectedIp }) => {
         }
       }
     };
-    // Lấy dữ liệu cảnh báo tấn công mỗi 5 giây
+    // Lấy dữ liệu cảnh báo tấn công mỗi 3 giây
     const intervalId = setInterval(fetchAlerts, 3000);
     return () => clearInterval(intervalId);
   }, [currentAlert, isUnderAttack, isSupported, selectedIp]);

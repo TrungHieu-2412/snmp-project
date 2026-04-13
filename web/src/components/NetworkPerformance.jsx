@@ -59,7 +59,7 @@ const NetworkPerformance = ({ selectedIp }) => {
   const chartWidth = Math.max(800, networkData.length * 60);
 
   return (
-    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+    <div style={{ backgroundColor: 'white', padding: '10px 20px 20px 20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
       <h2 style={{ fontSize: '18px', marginBottom: '20px', color: '#1f2937' }}>
         Network Performance
       </h2>

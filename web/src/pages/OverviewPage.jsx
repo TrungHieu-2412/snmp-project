@@ -2,6 +2,7 @@
 import { useOutletContext } from 'react-router-dom';
 import NetworkPerformance from '../components/NetworkPerformance';
 import SystemResources from '../components/SystemResources'; 
+import TcpMonitoring from '../components/TcpMonitoring';
 import ControlPanel from '../components/ControlPanel';
 import EvaluationLogs from '../components/EvaluationLogs';
 
@@ -12,7 +13,10 @@ const OverviewPage = () => {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px' }}>
       <NetworkPerformance selectedIp={selectedIp} />
-      <SystemResources selectedIp={selectedIp} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
+        <SystemResources selectedIp={selectedIp} />
+        <TcpMonitoring selectedIp={selectedIp} />
+      </div>
       <ControlPanel selectedIp={selectedIp} />
       <EvaluationLogs selectedIp={selectedIp} />
     </div>
