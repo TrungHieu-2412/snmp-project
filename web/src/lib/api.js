@@ -42,9 +42,9 @@ export const dashboardAPI = {
   },
 
   // Gửi lệnh thủ công để kích hoạt bảo vệ Iptables (thông qua lệnh SNMP SET)
-  mitigateAttack: async (targetIp) => {
+  mitigateAttack: async (targetIp, typeId = 1) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/config/protect?targetIp=${targetIp}`, {
+      const response = await fetch(`${API_BASE_URL}/config/protect?targetIp=${targetIp}&typeId=${typeId}`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Error sending mitigate command');

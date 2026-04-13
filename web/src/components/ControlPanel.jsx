@@ -84,10 +84,14 @@ const ControlPanel = ({ selectedIp }) => {
   // Xử lý logic chặn thủ công
   const handleManualMitigation = async () => {
     const ipToBlock = currentAlert ? currentAlert.ip : selectedIp;
-    const success = await dashboardAPI.mitigateAttack(ipToBlock);
+    const typeId = currentAlert ? currentAlert.typeId : 1; // Lấy typeId từ alert nếu có
+    const success = await dashboardAPI.mitigateAttack(ipToBlock, typeId);
     
     if (success) {
-      notification.success({ message: 'Defense Successful', description: `Successfully deployed Iptables shield blocking IP ${ipToBlock}!` });
+      notification.success({ 
+        message: 'Defense Successful', 
+        description: `Successfully deployed Iptables shield (Type ${typeId}) blocking IP ${ipToBlock}!` 
+      });
       setIsUnderAttack(false);
     } else {
       notification.error({ message: 'Error', description: 'Failed to send SET command!' });
