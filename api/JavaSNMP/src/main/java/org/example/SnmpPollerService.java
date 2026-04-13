@@ -46,6 +46,9 @@ public class SnmpPollerService {
     // tcpCurrEstab: số kết nối TCP đang ở trạng thái ESTABLISHED (cảm biến phát hiện tấn công SYN Flood)
     private static final String OID_TCP_CURR = "1.3.6.1.2.1.6.9.0";
 
+    // tcpInSegs: tổng số gói TCP nhận được (sử dụng để tính tốc độ PPS tới server)
+    private static final String OID_TCP_IN_SEGS = "1.3.6.1.2.1.6.10.0";
+
     // sysDescr: mô tả hệ điều hành Agent
     private static final String OID_SYS_DESCR = "1.3.6.1.2.1.1.1.0";
 
@@ -55,6 +58,7 @@ public class SnmpPollerService {
         long lastOutBytes = 0; // Số byte đi lần cuối
         long lastInPkts = 0; // Số gói đện lần cuối
         long lastOutPkts = 0; // Số gói đi lần cuối
+        long lastTcpInSegs = 0; // Số gói TCP đến lần cuối
         long lastTime = 0; // Thời điểm polling lần cuối (ms)
     }
 
@@ -134,6 +138,7 @@ public class SnmpPollerService {
             pdu.add(new VariableBinding(new OID(OID_RAM_AVAIL))); // [6] RAM còn trống (KB)
             pdu.add(new VariableBinding(new OID(OID_TCP_CURR))); // [7] số TCP ESTABLISHED
             pdu.add(new VariableBinding(new OID(OID_SYS_DESCR))); // [8] mô tả OS
+            pdu.add(new VariableBinding(new OID(OID_TCP_IN_SEGS))); // [9] tổng gói TCP đến
             pdu.setType(PDU.GET); // GET: lấy chính xác các OID đã liệt kê (không WALK)
 
             // Gửi PDU và nhận response
@@ -155,6 +160,7 @@ public class SnmpPollerService {
                 String ramAvailStr = responsePDU.getVariableBindings().get(6).getVariable().toString();
                 String tcpCurrStr = responsePDU.getVariableBindings().get(7).getVariable().toString();
                 String sysDescrStr = responsePDU.getVariableBindings().get(8).getVariable().toString();
+                String tcpInSegsStr = responsePDU.getVariableBindings().get(9).getVariable().toString();
 
                 // Nếu interface 2 không tồn tại trên Agent, bỏ qua lần poll này
                 if (inBytesStr.equals("noSuchObject"))
@@ -181,6 +187,7 @@ public class SnmpPollerService {
 
                 // Lấy những giá trị thô cần thiết
                 long tcpConns = Long.parseLong(tcpCurrStr); // Số kết nối TCP hiện tại
+                long currentTcpInSegs = Long.parseLong(tcpInSegsStr); // Số gói TCP In
                 long currentInBytes = Long.parseLong(inBytesStr); // Bytes in
                 long currentOutBytes = Long.parseLong(outBytesStr); // Bytes out
                 long currentInPkts = Long.parseLong(inPktsStr); // Packets in
@@ -190,7 +197,7 @@ public class SnmpPollerService {
                 long currentTime = System.currentTimeMillis();
 
                 // Khởi tạo băng thông = 0 (sử dụng cho lần poll đầu tiên chưa có delta)
-                long inKbps = 0, outKbps = 0, inPps = 0, outPps = 0;
+                long inKbps = 0, outKbps = 0, inPps = 0, outPps = 0, tcpInSegsPps = 0;
                 VmState state = states.get(ip); // Lấy trạng thái lần poll trước
 
                 if (state.lastTime != 0) { // Bỏ qua lần đầu tiên (chưa có điểm so sánh)
@@ -203,6 +210,9 @@ public class SnmpPollerService {
                         // Công thức tính PPS: delta_packet / giây
                         inPps = (currentInPkts - state.lastInPkts) / diffTimeSeconds;
                         outPps = (currentOutPkts - state.lastOutPkts) / diffTimeSeconds;
+                        
+                        // Công thức tính TCP In Segments PPS
+                        tcpInSegsPps = (currentTcpInSegs - state.lastTcpInSegs) / diffTimeSeconds;
                     }
                 }
 
@@ -211,6 +221,7 @@ public class SnmpPollerService {
                 state.lastOutBytes = currentOutBytes;
                 state.lastInPkts = currentInPkts;
                 state.lastOutPkts = currentOutPkts;
+                state.lastTcpInSegs = currentTcpInSegs;
                 state.lastTime = currentTime;
 
                 // Lưu trữ toàn bộ dữ liệu chỉ số vào map
@@ -221,6 +232,7 @@ public class SnmpPollerService {
                 metrics.put("inPps", inPps);
                 metrics.put("outPps", outPps);
                 metrics.put("tcp", tcpConns);
+                metrics.put("tcpInSegsPps", tcpInSegsPps);
                 metrics.put("sysName", sysName);
                 metrics.put("status", "ONLINE");
 
