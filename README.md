@@ -24,38 +24,39 @@
 
 ## 📖 Tổng quan
 
-Hệ thống này là một **nền tảng giám sát mạng và bảo mật end-to-end** được xây dựng trên giao thức SNMP. Điểm nổi bật là khả năng **tự động phát hiện và ngăn chặn tấn công SYN Flood**: khi máy Agent phát hiện lưu lượng TCP bất thường, nó sẽ gửi SNMP TRAP cảnh báo đến máy Manager (NMS), Manager lập tức phản hồi bằng lệnh SNMP SET để kích hoạt rule `iptables` chặn kẻ tấn công — **toàn bộ quy trình hoàn toàn tự động**.
+Hệ thống này là một **nền tảng giám sát mạng và bảo mật end-to-end** được xây dựng trên giao thức SNMP. Điểm nổi bật là khả năng **tự động phát hiện và ngăn chặn đa dạng loại tấn công (Multi-Vector IPS)**: khi máy Agent phát hiện lưu lượng bất thường (SYN Flood, UDP Flood, hoặc Ping Flood), nó sẽ gửi SNMP TRAP cảnh báo đến Manager (NMS). Manager phân tích và phản hồi bằng lệnh SNMP SET kèm theo mã định danh loại tấn công để kích hoạt đúng "khiên" `iptables` tương ứng — **quy trình hoàn toàn tự động và chính xác**.
 
 ```
-[VM3 - Attacker]  ──── SYN Flood ────►  [VM1 - Agent/Victim]
-                                                │
-                                    snmpd phát hiện TCP bất thường (SYN Flood)
-                                                │ TRAP
-                                                ▼
-                                        [VM2 - NMS Manager]
-                                         Spring Boot + SNMP4J
-                                                │ SET (kích hoạt block_attacker.sh)
-                                                ▼
-                                        [VM1 - Agent/Victim]
-                                         iptables -A INPUT -p tcp --syn -j DROP
+[VM3 - Attacker]  ─── SYN/UDP/ICMP Flood ───►  [VM1 - Agent/Victim]
+                                                        │
+                                          auto_sensor.sh phát hiện tấn công
+                                                        │ TRAP (v2c)
+                                                        ▼
+                                                [VM2 - NMS Manager]
+                                                 Spring Boot + SNMP4J
+                                                        │ SET (Type ID: 1, 2, hoặc 3)
+                                                        ▼
+                                                [VM1 - Agent/Victim]
+                                                 kích hoạt block_attacker.sh
+                                                 iptables -A ... (Chặn theo loại tấn công)
 ```
 
 ---
 
 ## ✨ Tính năng Cốt lõi
 
-| #   | Tính năng                                                                          | Công nghệ                          |
-| --- | ---------------------------------------------------------------------------------- | ---------------------------------- |
-| 1   | **Real-time Monitoring** CPU, RAM, Tốc độ mạng (Kbps), PPS của nhiều Agent         | SNMP GET + Spring Scheduler        |
-| 2   | **Automated IPS** Tự phát hiện SYN Flood và kích hoạt iptables trong < 10s         | SNMP TRAP + SET + Net-SNMP monitor |
-| 3   | **Auto / Manual Mode** Tuỳ chọn tự động hoặc để admin ra lệnh thủ công             | ControlPanel UI + REST API         |
-| 4   | **Protocol Benchmark** So sánh hiệu năng SNMPv1, v2c, v3 (GET / GETNEXT / GETBULK) | ProtocolPerformanceController      |
-| 5   | **Security Packet Sniffer** Phân tích payload Raw UDP, so sánh bảo mật phiên bản   | ProtocolSecurityController         |
-| 6   | **Network Topology** Sơ đồ mạng trực quan với luồng gói tin động SVG               | NetworkTopology.jsx                |
-| 7   | **Live Charts** Biểu đồ cuộn ngang real-time với Smart Auto-Scroll                 | Recharts + React                   |
-| 8   | **Evaluation Logs** Nhật ký đo lường hiệu năng trước/sau mỗi đợt tấn công          | TrapReceiverService                |
-| 9   | **Multi-Agent Support** Giám sát đồng thời nhiều máy Agent, chuyển đổi qua URL     | TopHeader + URL Param              |
-| 10  | **Configurable Delay** Điều chỉnh thời gian trễ phản ứng để đánh giá hiệu quả      | REST API + UI Slider               |
+| #   | Tính năng                                                                          | Công nghệ                        |
+| --- | ---------------------------------------------------------------------------------- | -------------------------------- |
+| 1   | **Real-time Monitoring** CPU, RAM, Tốc độ mạng (Kbps), PPS của nhiều Agent         | SNMP GET + Spring Scheduler      |
+| 2   | **Multi-Vector IPS** Tự phát hiện và chặn SYN Flood, UDP Flood, ICMP Flood         | SNMP TRAP + SET + auto_sensor.sh |
+| 3   | **Auto / Manual Mode** Tuỳ chọn tự động hoặc để admin ra lệnh thủ công             | ControlPanel UI + REST API       |
+| 4   | **Protocol Benchmark** So sánh hiệu năng SNMPv1, v2c, v3 (GET / GETNEXT / GETBULK) | ProtocolPerformanceController    |
+| 5   | **Security Packet Sniffer** Phân tích payload Raw UDP, so sánh bảo mật phiên bản   | ProtocolSecurityController       |
+| 6   | **Network Topology** Sơ đồ mạng trực quan với luồng gói tin động SVG               | NetworkTopology.jsx              |
+| 7   | **Live Charts** Biểu đồ cuộn ngang real-time với Smart Auto-Scroll                 | Recharts + React                 |
+| 8   | **Evaluation Logs** Nhật ký đo lường hiệu năng trước/sau mỗi đợt tấn công          | TrapReceiverService              |
+| 9   | **Multi-Agent Support** Giám sát đồng thời nhiều máy Agent, chuyển đổi qua URL     | TopHeader + URL Param            |
+| 10  | **Configurable Delay** Điều chỉnh thời gian trễ phản ứng để đánh giá hiệu quả      | REST API + UI Slider             |
 
 ---
 
@@ -96,8 +97,9 @@ Hệ thống này là một **nền tảng giám sát mạng và bảo mật end
 ```
 snmp-project/
 ├── VM1/                               # Cấu hình triển khai lên máy Agent (VM1)
-│   ├── snmpd.conf                     # Cấu hình Net-SNMP: community, TRAP, monitor rule
-│   └── block_attacker.sh              # Script kích hoạt iptables khi nhận lệnh SNMP SET
+│   ├── snmpd.conf                     # Cấu hình Net-SNMP: community, TRAP, access control
+│   ├── auto_sensor.sh                 # Script giám sát lưu lượng và bắn TRAP cảnh báo
+│   └── block_attacker.sh              # Script kích hoạt iptables theo ID loại tấn công
 │
 ├── api/
 │   └── JavaSNMP/                       # NMS Backend (Spring Boot)
@@ -150,26 +152,61 @@ snmp-project/
 
 ### Bước 1: Cấu hình SNMP Agent (VM1)
 
-Sao chép các file cấu hình từ thư mục `VM1/` lên máy Agent:
+Sao chép các file cấu hình và scripts từ thư mục `VM1/` lên máy Agent:
 
 ```bash
 # Trên VM1
 sudo cp snmpd.conf /etc/snmp/snmpd.conf
 sudo cp block_attacker.sh /usr/local/bin/block_attacker.sh
+sudo cp auto_sensor.sh ./auto_sensor.sh
+
+# Cấp quyền thực thi cho các file script
 sudo chmod +x /usr/local/bin/block_attacker.sh
+sudo chmod +x ./auto_sensor.sh
 
 # Cấp quyền sudo cho snmpd để chạy iptables mà không cần mật khẩu
 echo "snmp ALL=(ALL) NOPASSWD: /sbin/iptables" | sudo tee /etc/sudoers.d/snmp
 
 # Khởi động lại snmpd
 sudo systemctl restart snmpd
-sudo systemctl status snmpd
 ```
 
-Kiểm tra Agent đang phản hồi SNMP (chạy từ VM2):
+Tạo Systemd Service cho auto_sensor.sh
 
 ```bash
-snmpget -v2c -c public 10.0.1.2 sysDescr.0
+sudo nano /etc/systemd/system/autosensor.service
+```
+
+> ```ini
+> [Unit]
+> Description=IDPS Auto Sensor Traffic Monitor
+> After=network.target snmpd.service
+>
+> [Service]
+> Type=simple
+> User=root
+> ExecStart=/bin/bash /home/tnvhoang2005/auto_sensor.sh
+> Restart=on-failure
+> RestartSec=5
+>
+> [Install]
+> WantedBy=multi-user.target
+> ```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable autosensor
+sudo systemctl start autosensor
+```
+
+Kiểm tra Agent đang phản hồi SNMP (từ VM2):
+
+```bash
+# SNMPv2c (Community: public)
+snmpget -v2c -c public 10.0.1.2 1.3.6.1.2.1.1.1.0
+
+# SNMPv3 (authPriv + SHA + AES)
+snmpget -v3 -l authPriv -u adminv3 -a SHA -A "admin12345" -x AES -X "admin12345" 10.0.1.2 1.3.6.1.2.1.1.1.0
 ```
 
 ---
@@ -196,32 +233,6 @@ Xác nhận server đang chạy:
 curl http://localhost:8080/api/metrics
 ```
 
-> **Lưu ý:** Để BE tự khởi động khi VM2 reboot, tạo systemd service:
->
-> ```bash
-> sudo nano /etc/systemd/system/snmp-nms.service
-> ```
->
-> ```ini
-> [Unit]
-> Description=SNMP NMS Spring Boot App
-> After=network.target
->
-> [Service]
-> User=your_user
-> WorkingDirectory=/path/to/api/JavaSNMP
-> ExecStart=java -jar target/JavaSNMP-1.0-SNAPSHOT.jar
-> Restart=always
->
-> [Install]
-> WantedBy=multi-user.target
-> ```
->
-> ```bash
-> sudo systemctl enable snmp-nms
-> sudo systemctl start snmp-nms
-> ```
-
 ---
 
 ### Bước 3: Cấu hình và chạy Frontend (máy local hoặc máy bất kỳ)
@@ -246,20 +257,25 @@ pnpm run preview
 
 ---
 
-### Bước 4: Mô phỏng tấn công SYN Flood (VM3)
+### Bước 4: Mô phỏng tấn công và Kiểm tra (VM3)
 
 ```bash
-# Trên VM3 (Kali Linux)
+# 1. Tấn công SYN Flood
 sudo hping3 -S --flood -p 80 10.0.1.2
 
-# Theo dõi phản ứng trên VM1
-sudo iptables -L INPUT -n -v
+# 2. Tấn công UDP Flood
+sudo hping3 --udp --flood -p 53 10.0.1.2
 
-# Theo dõi log trên VM1
+# 3. Tấn công ICMP (Ping) Flood
+sudo hping3 -1 --flood 10.0.1.2
+
+# Theo dõi phản ứng trên VM1
+sudo journalctl -u autosensor -f -a
+sudo iptables -L INPUT -n -v
 tail -f /var/log/snmp_mitigation.log
 
 # Theo dõi log trên VM2
-tail -f app.log | grep -E "TRAP|SET|MITIGATION"
+tail -f app.log | grep -E "ALERT|ACTION|SUCCESS"
 ```
 
 ---
@@ -329,28 +345,29 @@ Gửi request SNMP GET (v2c) ───── (UDP:161) ─────┐
 ```
 [VM3 - Attacker] ─── Tấn công (hping3)
       │
-      │ SYN Flood (TCP: 80)
+      │ SYN/UDP/ICMP Flood
       ▼
 [VM1 - Agent/Victim]
       │
-      │  - Phát hiện tấn công: monitor tcp.currEstab > 2000
-      │  - Gửi TRAP về NMS Manager  ────────────────┐
+      │  - auto_sensor.sh phát hiện Delta traffic > Ngưỡng
+      │  - Gửi TRAP kèm loại tấn công (v2c) ────────┐
       │                                             │
       ▼                                             │
 [VM2 - NMS Manager] ◄──── SNMP TRAP (UDP:10162) ────┘
       │
       │  - Nhận TRAP tại TrapReceiverService
-      │  - Kiểm tra Chế độ Auto-IPS
+      │  - Chế độ Auto-IPS: Xác định ID loại tấn công
       │  - Đợi <delay> giây (nếu có)
       │  - Gửi lệnh SNMP SET (v2c) ─────────────────┐
       │                                             │
       │    OID: 1.3.6.1.4.1.9999.1.0                │
-      │    Value: 1 (Activate)                      │
+      │    Value: <Type_ID> (Chọn khiên bảo vệ)     │
       ▼                                             │
 [VM1 - Agent/Victim] ◄───── Command (UDP:161) ──────┘
       │
-      │  - snmpd gọi block_attacker.sh
-      │  - Thực thi: iptables -A INPUT -s 10.0.2.2 -j DROP
+      │  - snmpd gọi block_attacker.sh $4=<Type_ID>
+      │  - Case: 1 -> SYN Shield | 2 -> UDP | 3 -> ICMP
+      │  - Thực thi: iptables -A ... -j DROP
       ▼
 [VM2 - NMS Manager] ◄──────── Status Update ─────────────┘
       │
