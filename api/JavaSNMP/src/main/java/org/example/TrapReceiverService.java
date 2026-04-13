@@ -44,11 +44,11 @@ public class TrapReceiverService implements CommandResponder {
     private int mitigationDelay = 10;
     private boolean isAutoMode = true;
 
-    // Các IP ĐANG đếm ngược (để chặn TRAP spam trong lúc chờ)
+    // Các cặp "IP_LoạiTấnCông" ĐANG đếm ngược (để chặn TRAP spam trong lúc chờ)
     private Set<String> activeMitigations = ConcurrentHashMap.newKeySet();
 
-    // Các IP ĐÃ bị bật tường lửa chặn thành công (Khóa tĩnh lặng vĩnh viễn)
-    private Set<String> mitigatedIps = ConcurrentHashMap.newKeySet();
+    // Các cặp "IP_LoạiTấnCông" ĐÃ bị bật tường lửa chặn thành công (Khóa vĩnh viễn theo loại)
+    private Set<String> mitigatedAttacks = ConcurrentHashMap.newKeySet();
 
     @PostConstruct
     public void startListening() {
@@ -75,42 +75,50 @@ public class TrapReceiverService implements CommandResponder {
                     String value = vb.getVariable().toString();
                     String attackType = null;
                     String attackMessage = null;
+                    int setValue = 0; // Giá trị để gửi kèm SNMP SET
 
                     // Nhận diện theo payload từ auto_sensor.sh
                     if (value.contains("SYN_FLOOD_DETECTED")) {
                         attackType = "TCP SYN Flood";
                         attackMessage = "SYN Flood attack is occurred!";
+                        setValue = 1;
                     } else if (value.contains("UDP_FLOOD_DETECTED")) {
                         attackType = "UDP Flood";
                         attackMessage = "UDP Flood attack is occurred!";
+                        setValue = 2;
                     } else if (value.contains("GENERAL_TRAFFIC_SPIKE")) {
-                        attackType = "TCP ACK Flood";
-                        attackMessage = "TCP ACK Flood / Traffic Spike is occurred!";
+                        attackType = "ICMP / Traffic Spike";
+                        attackMessage = "ICMP / Traffic Spike is occurred!";
+                        setValue = 3;
                     }
 
-                    if (attackType != null) {
+                    if (attackType != null && setValue != 0) {
                         String targetIp = peerAddress.split("/")[0];
 
-                        // ONE-AND-DONE 
-                        // Nếu hệ thống ĐÃ TỪNG bật tường lửa thành công cho IP này rồi -> Im lặng 
-                        if (mitigatedIps.contains(targetIp)) {
+                        // Tạo khóa duy nhất cho phép chặn nhiều loại tấn công trên cùng 1 IP
+                        String mitigationKey = targetIp + "_" + setValue;
+
+                        // Nếu hệ thống ĐÃ TỪNG bật tường lửa cho loại này trên IP này rồi -> Im lặng 
+                        if (mitigatedAttacks.contains(mitigationKey)) {
                             return;
                         }
 
-                        // Nếu hệ thống ĐANG đếm ngược cho IP này -> Bỏ qua các TRAP rác đến sau
-                        if (activeMitigations.contains(targetIp)) {
+                        // Nếu hệ thống ĐANG đếm ngược cho loại này -> Bỏ qua các TRAP rác đến sau
+                        if (activeMitigations.contains(mitigationKey)) {
                             return;
                         }
 
-                        // Đưa IP vào danh sách ĐANG XỬ LÝ
-                        activeMitigations.add(targetIp);
+                        // Đưa cặp IP_Loại này vào danh sách ĐANG XỬ LÝ
+                        activeMitigations.add(mitigationKey);
 
                         logger.warn("⚠️ SECURITY WARNING: Received TRAP packet from [{}]", peerAddress);
-                        logger.error("[VERIFICATION SYSTEM]: {} at {}!", attackMessage, targetIp);
+                        logger.error("[IDPS ALERT] ATTACK DETECTED: {} | TARGET: {} | STATUS: PROCESSING",
+                                attackType, targetIp);
 
                         int currentDelay = this.mitigationDelay;
+                        final int finalSetValue = setValue; // Dùng cho hàm Lambda chạy nền
 
-                        // log
+                        // Log
                         Map<String, Object> log = new ConcurrentHashMap<>();
                         log.put("key", String.valueOf(logIdCounter++));
                         log.put("startTime", new SimpleDateFormat("HH:mm:ss").format(new Date()));
@@ -119,10 +127,11 @@ public class TrapReceiverService implements CommandResponder {
                         log.put("status", "Processing...");
                         evaluationLogs.add(log);
 
-                        // cảnh báo cho Frontend
+                        // Cảnh báo cho Frontend
                         Map<String, String> alert = new ConcurrentHashMap<>();
                         alert.put("time", String.valueOf(System.currentTimeMillis()));
                         alert.put("ip", targetIp);
+                        alert.put("typeId", String.valueOf(setValue)); // Thêm typeId để FE biết loại nào để gửi lại khi nhấn Manual
                         alert.put("attackType", attackType);
                         alert.put("message", attackMessage);
                         alertHistory.add(alert);
@@ -130,15 +139,17 @@ public class TrapReceiverService implements CommandResponder {
                         if (isAutoMode) {
                             if (currentDelay > 0) {
                                 logger.warn(
-                                        "⌛ The system will automatically activate the Iptables shield after {} seconds...",
-                                        currentDelay);
+                                        "⌛ The system will automatically activate the Iptables shield (Type: {}) after {} seconds...",
+                                        finalSetValue, currentDelay);
                             } else {
-                                logger.warn("⚡ 0s Mode: Activating Iptables shield IMMEDIATELY...");
+                                logger.warn("⚡ 0s Mode: Activating Iptables shield (Type: {}) IMMEDIATELY...",
+                                        finalSetValue);
                             }
 
                             // Chạy task bật tường lửa bất đồng bộ sau X giây đếm ngược
                             CompletableFuture.runAsync(() -> {
-                                boolean success = triggerMitigationSet(targetIp);
+                                // Truyền thêm finalSetValue vào hàm trigger
+                                boolean success = triggerMitigationSet(targetIp, finalSetValue);
 
                                 // Lấy số liệu sau chặn
                                 Map<String, Object> currentMetrics = pollerService.getMetricsByIp(targetIp);
@@ -152,12 +163,12 @@ public class TrapReceiverService implements CommandResponder {
 
                                 if (success) {
                                     alert.put("status", "Resolved");
-                                    // Ghi nhận IP này đã được bảo vệ thành công -> Khóa vĩnh viễn
-                                    mitigatedIps.add(targetIp);
+                                    // Ghi nhận IP này đã được bảo vệ thành công khỏi LOẠI TẤN CÔNG NÀY
+                                    mitigatedAttacks.add(mitigationKey);
                                 }
 
-                                // đếm ngược kết thúc -> Mở khóa chờ
-                                activeMitigations.remove(targetIp);
+                                // đếm ngược kết thúc -> Mở khóa chờ cho loại tấn công này
+                                activeMitigations.remove(mitigationKey);
 
                             }, CompletableFuture.delayedExecutor(currentDelay, TimeUnit.SECONDS));
                         } else {
@@ -165,8 +176,8 @@ public class TrapReceiverService implements CommandResponder {
                             log.put("status", "Manual Pending");
                             alert.put("status", "Processing...");
 
-                            // Trả IP về trạng thái tự do để chờ lệnh thủ công
-                            activeMitigations.remove(targetIp);
+                            // Trả lại trạng thái tự do để chờ lệnh thủ công
+                            activeMitigations.remove(mitigationKey);
                         }
                     }
                 });
@@ -174,8 +185,9 @@ public class TrapReceiverService implements CommandResponder {
         }
     }
 
-    public boolean triggerMitigationSet(String targetIp) {
-        logger.info("⚡ ACTION: Sending SNMP SET to {} to activate defense...", targetIp);
+    // Truyền thêm tham số setValue để quy định loại Shield sẽ bật
+    public boolean triggerMitigationSet(String targetIp, int setValue) {
+        logger.info("⚡ ACTION: Sending SNMP SET (Value: {}) to {} to activate defense...", setValue, targetIp);
         try {
             TransportMapping<? extends Address> transport = new DefaultUdpTransportMapping();
             transport.listen();
@@ -191,13 +203,15 @@ public class TrapReceiverService implements CommandResponder {
 
             PDU pdu = new PDU();
             pdu.setType(PDU.SET);
-            pdu.add(new VariableBinding(new OID(SCRIPT_TRIGGER_OID), new Integer32(1)));
+            // Ánh xạ OID kèm theo Giá trị kích hoạt tương ứng (1, 2, hoặc 3)
+            pdu.add(new VariableBinding(new OID(SCRIPT_TRIGGER_OID), new Integer32(setValue)));
 
             ResponseEvent responseEvent = snmp.send(pdu, target);
             PDU responsePDU = responseEvent.getResponse();
 
             if (responsePDU != null && responsePDU.getErrorStatus() == PDU.noError) {
-                logger.info("✅ SUCCESS: The Iptables has been successfully set up at {}!", targetIp);
+                logger.info("✅ SUCCESS: The Iptables (Type {}) has been successfully set up at {}!", setValue,
+                        targetIp);
                 snmp.close();
                 return true;
             } else {
@@ -211,6 +225,12 @@ public class TrapReceiverService implements CommandResponder {
         }
     }
 
+    // Overload hàm trigger cho trường hợp kích hoạt thủ công từ giao diện
+    public boolean triggerMitigationSet(String targetIp) {
+        // Mặc định gọi khiên 1 (TCP SYN) nếu không truyền tham số (fallback an toàn)
+        return triggerMitigationSet(targetIp, 1);
+    }
+
     public void setMitigationDelay(int delay) {
         this.mitigationDelay = delay;
         logger.info("⚙️ System configuration: Auto-IPS delay time has been updated to {} seconds", delay);
@@ -221,11 +241,11 @@ public class TrapReceiverService implements CommandResponder {
         logger.info("⚙️ System configuration: Auto-IPS mode has been set to {}", autoMode ? "ON" : "OFF");
     }
 
-    // Hàm tiện ích: Khi muốn test lại kịch bản từ đầu
+    // Cập nhật lại Reset State
     public void resetMitigationState() {
         activeMitigations.clear();
-        mitigatedIps.clear();
-        logger.info("🔄 System state reset: Cleared all active and mitigated IP records.");
+        mitigatedAttacks.clear();
+        logger.info("🔄 System state reset: Cleared all active and mitigated Attack records.");
     }
 
     public List<Map<String, Object>> getEvaluationLogs() {
