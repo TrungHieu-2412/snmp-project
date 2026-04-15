@@ -44,7 +44,7 @@ public class TrapReceiverService implements CommandResponder {
 
     // Danh sách cảnh báo TRAP (alert) đã nhận
     private List<Map<String, String>> alertHistory = new ArrayList<>();
-    
+
     // Nhật ký đánh giá: mỗi đợt tấn công tạo 1 bản ghi gồm các thông số đo đạc trước/sau chặn
     private List<Map<String, Object>> evaluationLogs = new ArrayList<>();
     private int logIdCounter = 1;
@@ -63,10 +63,10 @@ public class TrapReceiverService implements CommandResponder {
         try {
             Address listenAddress = GenericAddress.parse("udp:" + TRAP_LISTEN_ADDRESS);
             TransportMapping<?> transport = new DefaultUdpTransportMapping((UdpAddress) listenAddress);
-            
+
             Snmp snmp = new Snmp(transport);
             snmp.addCommandResponder(this);
-            
+
             transport.listen();
             logger.info("✅ NMS TRAP: Listening for TRAP packet at port {}", TRAP_LISTEN_ADDRESS);
         } catch (IOException e) {
@@ -131,7 +131,7 @@ public class TrapReceiverService implements CommandResponder {
                         int currentDelay = this.mitigationDelay;
                         final int finalSetValue = setValue;
 
-                         // Tạo bản ghi đánh giá (EvaluationLog) cho FE
+                        // Tạo bản ghi đánh giá (EvaluationLog) cho FE
                         Map<String, Object> log = new ConcurrentHashMap<>();
                         log.put("key", String.valueOf(logIdCounter++));
                         log.put("startTime", new SimpleDateFormat("HH:mm:ss").format(new Date()));
@@ -216,7 +216,7 @@ public class TrapReceiverService implements CommandResponder {
 
             PDU pdu = new PDU();
             pdu.setType(PDU.SET);
-            
+
             // Ánh xạ OID kèm theo Giá trị kích hoạt tương ứng (1, 2, hoặc 3) với mỗi loại tấn công
             pdu.add(new VariableBinding(new OID(SCRIPT_TRIGGER_OID), new Integer32(setValue)));
 

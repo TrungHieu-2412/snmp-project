@@ -64,6 +64,8 @@ public class ProtocolPerformanceController {
             TransportMapping<? extends Address> transport = new DefaultUdpTransportMapping();
             snmp = new Snmp(transport);
 
+            SecurityProtocols.getInstance().addDefaultProtocols();
+
             // Khởi tạo USM (User Security Model) để hỗ trợ SNMPv3
             USM usm = new USM(SecurityProtocols.getInstance(), new OctetString(MPv3.createLocalEngineID()), 0);
             SecurityModels.getInstance().addSecurityModel(usm);
